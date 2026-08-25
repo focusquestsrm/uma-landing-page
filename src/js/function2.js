@@ -1,0 +1,187 @@
+(function () {
+  'use strict';
+
+  const form = document.getElementById('leadform');
+  if (!form) return;
+
+  const endpoint = '/.netlify/functions/submit-lead';
+  const genericError = 'We’re unable to process your request at this time. Please try again shortly.';
+
+  function setError(elementId, message) {
+    const target = document.getElementById(elementId);
+    if (!target) return;
+    target.textContent = message || '';
+    target.classList.toggle('is-error', Boolean(message));
+  }
+
+  function displayStatus(message, type) {
+    const status = document.getElementById('status-message');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'status-message' + (type === 'error' ? ' is-error' : '');
+  }
+
+  function captureAttribution() {
+    const params = new URLSearchParams(window.location.search);
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'campaign_id'].forEach(function (key) {
+      const field = document.getElementById(key);
+      const value = params.get(key);
+      if (field && value) field.value = value.slice(0, 250);
+    });
+    const clickId = params.get('fbclid');
+    const clickField = document.getElementById('subid4');
+    if (clickId && clickField) clickField.value = clickId.slice(0, 250);
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    }
+  }
+
+  function hydrateProgramSelection() {
+    const select = document.getElementById('lead_education_program_id');
+    if (!select) return;
+    const storedProgram = sessionStorage.getItem('umaProgramId');
+    if (storedProgram) select.value = storedProgram;
+    if (window.UMA_PROGRAM_AVAILABILITY && typeof window.UMA_PROGRAM_AVAILABILITY.getAvailablePrograms === 'function') {
+      const available = new Set(window.UMA_PROGRAM_AVAILABILITY.getAvailablePrograms().map(String));
+      Array.from(select.options).forEach(function (option) {
+        if (option.value) option.disabled = !available.has(option.value);
+      });
+    }
+  }
+
+  function validateStepOne() {
+    const field = document.getElementById('lead_education_program_id');
+    if (field && field.value) {
+      setError('step1-error', '');
+      return true;
+    }
+    setError('step1-error', 'Please select a program before continuing.');
+    if (field) field.focus();
+    return false;
+  }
+
+  function validateStepTwo() {
+    const checks = [
+      ['lead_education_grad_year', 'Please select your graduation year.', 'grad-year-error'],
+      ['lead_education_education_level_id', 'Please select your highest level of education.', 'education-error'],
+      ['lead_address_address_visible', 'Please enter your street address.', 'addressValidationMessage'],
+      ['lead_address_city', 'Please enter your city.', null],
+      ['lead_address_state', 'Please select your state.', null],
+      ['lead_address_zip', 'Please enter a valid 5-digit ZIP code.', null]
+    ];
+    for (const check of checks) {
+      const field = document.getElementById(check[0]);
+      const value = field ? String(field.value || '').trim() : '';
+      const valid = value && (check[0] !== 'lead_address_zip' || /^\d{5}$/.test(value));
+      if (!valid) {
+        if (check[2]) setError(check[2], check[1]);
+        if (field) field.focus();
+        return false;
+      }
+      if (check[2]) setError(check[2], '');
+    }
+    return true;
+  }
+
+  function validateStepThree() {
+    const checks = [
+      ['lead_firstname', 'Please enter your first name.', 'first-name-error', function (value) { return value.length >= 2; }],
+      ['lead_lastname', 'Please enter your last name.', 'last-name-error', function (value) { return value.length >= 2; }],
+      ['lead_email', 'Please enter a valid email address.', 'email-error', function (value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }],
+      ['lead_phone1', 'Please enter a valid 10-digit phone number.', 'phone-error', function (value) { return /^\d{10}$/.test(value.replace(/\D/g, '')); }]
+    ];
+    for (const check of checks) {
+      const field = document.getElementById(check[0]);
+      const value = field ? String(field.value || '').trim() : '';
+      if (!check[3](value)) {
+        setError(check[2], check[1]);
+        if (field) field.focus();
+        return false;
+      }
+      setError(check[2], '');
+    }
+    const consent = document.getElementById('tcpa-check');
+    if (!consent || !consent.checked) {
+      setError('consent-error', 'Please confirm the disclosure before continuing.');
+      if (consent) consent.focus();
+      return false;
+    }
+    setError('consent-error', '');
+    return true;
+  }
+
+  function updateStep(stepNumber) {
+    Array.from(form.querySelectorAll('.form-step[data-step]')).forEach(function (step) {
+      const visible = Number(step.dataset.step) === Number(stepNumber);
+      step.classList.toggle('is-visible', visible);
+      step.classList.toggle('hidden', !visible);
+    });
+    displayStatus('', '');
+  }
+
+  function setAddressValue() {
+    const visible = document.getElementById('lead_address_address_visible');
+    const hidden = document.getElementById('lead_address_address');
+    if (!visible || !hidden) return;
+    visible.addEventListener('input', function () { hidden.value = visible.value; });
+  }
+
+  function wireNavigation() {
+    form.querySelectorAll('[data-next-step]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const current = Number(form.querySelector('.form-step.is-visible').dataset.step);
+        const valid = current === 1 ? validateStepOne() : validateStepTwo();
+        if (!valid) return;
+        updateStep(Number(button.dataset.nextStep));
+        const nextField = form.querySelector('.form-step.is-visible input, .form-step.is-visible select');
+        if (nextField) nextField.focus();
+      });
+    });
+    form.querySelectorAll('[data-back-step]').forEach(function (button) {
+      button.addEventListener('click', function () { updateStep(Number(button.dataset.backStep)); });
+    });
+  }
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (!validateStepThree()) return;
+    const button = document.getElementById('submitButton');
+    button.disabled = true;
+    button.textContent = 'Submitting...';
+    displayStatus('', '');
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: new URLSearchParams(new FormData(form)).toString(),
+        credentials: 'same-origin',
+        redirect: 'error'
+      });
+      const result = await response.json();
+      if (response.ok && result.outcome === 'accepted') {
+        form.reset();
+        sessionStorage.removeItem('umaProgramId');
+        updateStep(4);
+        return;
+      }
+      if (response.ok && result.outcome === 'redirect' && result.location) {
+        window.location.replace(result.location);
+        return;
+      }
+      throw new Error('Unable to complete request');
+    } catch (error) {
+      displayStatus(genericError, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Request Info';
+    }
+  });
+
+  const phone = document.getElementById('lead_phone1');
+  if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
+  captureAttribution();
+  hydrateProgramSelection();
+  setAddressValue();
+  wireNavigation();
+  updateStep(1);
+})();

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Back2Learn | Health - College Matcher</title>
+    <meta
+      name="description"
+      content="Explore flexible online healthcare programs from Ultimate Medical Academy."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <base href="./" />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="image/Graduation%20and%20medicine%20combined%20logo.png"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg" aria-label="Main navigation">
+      <div class="container-fluid">
+        <a href="index.html" class="navbar-brand" aria-label="UMA home">
+          <img src="image/UMA-logo.webp" alt="UMA logo" />
+        </a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero-shell">
+        <div class="container hero-grid">
+          <div class="row justify-content-center align-items-center w-100">
+            <div class="col-lg-4 col-md-5 mx-auto">
+              <div class="hero-copy">
+                <h1>Let’s take the next step together.</h1>
+                <h3>
+                  Fill out the form to connect with a representative who’s here to help you
+                  start your journey.
+                </h3>
+              </div>
+            </div>
+
+            <div class="col-lg-7 col-md-7 mx-auto">
+              <form
+                id="zipform"
+                class="form-card"
+                action="programs/connect/form-update-health.html"
+                method="POST"
+                aria-label="Program interest form"
+                novalidate
+              >
+                <div class="badge-row">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    fill="currentColor"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"
+                    />
+                    <path
+                      d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0"
+                    />
+                  </svg>
+                  <span>No spam calls. No junk mail. Guaranteed.</span>
+                </div>
+
+                <div class="mb-3">
+                  <label for="lead_education_program_id" class="form-label">
+                    What program interest you most?
+                  </label>
+                  <select
+                    id="lead_education_program_id"
+                    name="lead_education[program_id]"
+                    class="form-select"
+                    required
+                    aria-required="true"
+                  >
+                    <option selected disabled value="">Please Select</option>
+                    <option value="227753">Healthcare and Human Services</option>
+                    <option value="227755">Medical Administrative Assistant</option>
+                    <option value="227756">Medical Billing and Coding</option>
+                    <option value="227754">Healthcare Management</option>
+                  </select>
+                  <span class="error-message" id="program-select-error" aria-live="polite"></span>
+                </div>
+
+                <div class="form-button-row">
+                  <button class="btn btn-primary" id="submitButton" type="submit">
+                    Next
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="healthcare-programs">
+        <div class="container">
+          <div class="row justify-content-center text-center">
+            <div class="col-lg-10 col-xl-9">
+              <h2 class="programs-heading">
+                Discover Our Top
+                <span class="text-accent">Online Healthcare Programs</span>
+              </h2>
+            </div>
+          </div>
+
+          <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-4">
+              <div class="program-card">
+                <div class="program-icon" aria-hidden="true">📄</div>
+                <h3 class="program-title">Healthcare Management</h3>
+                <a href="programs/connect/form-update-health.html" data-program-id="227754" class="btn btn-primary">
+                  Get More Info
+                </a>
+              </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+              <div class="program-card">
+                <div class="program-icon" aria-hidden="true">🗃️</div>
+                <h3 class="program-title">Medical Administrative Assistant</h3>
+                <a href="programs/connect/form-update-health.html" data-program-id="227755" class="btn btn-primary">
+                  Get More Info
+                </a>
+              </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+              <div class="program-card">
+                <div class="program-icon" aria-hidden="true">🖥️</div>
+                <h3 class="program-title">Healthcare and Human Services</h3>
+                <a href="programs/connect/form-update-health.html" data-program-id="227753" class="btn btn-primary">
+                  Get More Info
+                </a>
+              </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+              <div class="program-card">
+                <div class="program-icon" aria-hidden="true">👥</div>
+                <h3 class="program-title">Medical Billing and Coding</h3>
+                <a href="programs/connect/form-update-health.html" data-program-id="227756" class="btn btn-primary">
+                  Get More Info
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="why-choose" aria-label="Why choose UMA?">
+        <div class="container">
+          <div class="row text-center">
+            <div class="col">
+              <h3 class="section-title">Why Choose <strong>UMA?</strong></h3>
+            </div>
+          </div>
+
+          <div class="row align-items-start text-center mx-auto">
+            <div class="col-md-4 feature">
+              <img src="image/7.png" alt="" aria-hidden="true" />
+              <h2>A nonprofit, accredited allied health school</h2>
+              <hr />
+            </div>
+            <div class="col-md-4 feature">
+              <img src="image/1.png" alt="" aria-hidden="true" />
+              <h2>Flexible online programs</h2>
+              <hr />
+            </div>
+            <div class="col-md-4 feature">
+              <img src="image/2.png" alt="" aria-hidden="true" />
+              <h2>Trusted by 15,000+ students across the country</h2>
+              <hr />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="accreditation-band" aria-label="Student support section">
+        <div class="container">
+          <div class="row text-center">
+            <div class="col-12">
+              <div class="statement">
+                You’re Built to Care. We’re Built to Help.
+              </div>
+            </div>
+          </div>
+
+          <div class="row align-items-center mt-4">
+            <div class="col-md-5 text-md-end text-center feature-copy">
+              <p>
+                <strong>Flexible Learning. Lifelong Support.</strong><br /><br />
+                UMA’s degree programs let you learn your way—online or blended—so education
+                fits your life.
+              </p>
+            </div>
+            <div class="col-md-2 text-center">
+              <img src="image/accreditation-1.webp" alt="" aria-hidden="true" class="img-fluid" />
+            </div>
+            <div class="col-md-5"></div>
+          </div>
+
+          <div class="row align-items-center mt-4">
+            <div class="col-md-5 text-md-end text-center feature-copy">
+              <p>
+                From your first conversation with admissions to your job search and beyond, UMA
+                offers personalized support every step of the way.
+              </p>
+            </div>
+            <div class="col-md-2 text-center">
+              <img src="image/Accreditation-2.webp" alt="" aria-hidden="true" class="img-fluid" />
+            </div>
+            <div class="col-md-5"></div>
+          </div>
+
+          <div class="row align-items-center mt-4">
+            <div class="col-md-5 text-md-end text-center feature-copy">
+              <p>
+                <strong>We Care for You. You Care for Others.</strong><br /><br />
+                When students feel supported, they thrive and make a difference.
+              </p>
+            </div>
+            <div class="col-md-2 text-center">
+              <img src="image/Accreditation-3.webp" alt="" aria-hidden="true" class="img-fluid" />
+            </div>
+            <div class="col-md-5"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer-divider" aria-hidden="true"></div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="row justify-content-center text-center">
+          <div class="col-lg-11 col-xl-10">
+            <p class="footer-text mb-2">
+              Privacy Policy: The content on this page is proprietary and intended for
+              informational purposes only. Copying, reproducing, or distributing any information
+              displayed here without explicit permission is strictly prohibited. For more details,
+              please refer to Ultimate Medical Academy full Privacy Policy at
+              <a href="https://www.ultimatemedical.edu/about/privacy-policy/" class="footer-link">Privacy Policy</a>
+              |
+              <a href="https://www.ultimatemedical.edu/about/privacy-policy/" class="footer-link">Ultimate Medical Academy</a>.
+            </p>
+
+            <p class="footer-copy mb-5">
+              © 2026 UMA Education, Inc. D/b/a Ultimate Medical Academy. All rights reserved.
+            </p>
+
+            <p class="footer-powered mb-0">
+              Powered by <a href="#" class="footer-brand">Back2Learn, Inc</a> |
+              Copyright © 2026 Back2Learn, Inc
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="js/program-availability.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var select = document.getElementById('lead_education_program_id');
+        var form = document.getElementById('zipform');
+        var error = document.getElementById('program-select-error');
+
+        if (form && select) {
+          form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (!select.value) {
+              error.textContent = 'Please select a program before continuing.';
+              select.focus();
+            } else {
+              error.textContent = '';
+              sessionStorage.setItem('umaProgramId', select.value);
+              window.location.assign(form.action);
+            }
+          });
+
+          document.querySelectorAll('[data-program-id]').forEach(function (link) {
+            link.addEventListener('click', function () {
+              sessionStorage.setItem('umaProgramId', link.dataset.programId);
+            });
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
