@@ -44,16 +44,37 @@
     try {
       const programs = await window.UMA_PROGRAM_AVAILABILITY.loadPrograms();
       window.UMA_PROGRAM_AVAILABILITY.populateSelect(select, programs);
+      const cardList = document.getElementById('program-card-list');
+      if (cardList) {
+        window.UMA_PROGRAM_AVAILABILITY.renderCards(cardList, programs);
+        cardList.querySelectorAll('[data-program-id]').forEach(function (link) {
+          link.addEventListener('click', function (event) {
+            event.preventDefault();
+            const programId = String(link.dataset.programId || '');
+            if (!programs.some(function (program) { return program.program_id === programId; })) return;
+            select.value = programId;
+            sessionStorage.setItem('umaProgramId', programId);
+            updateStep(1);
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            select.focus({ preventScroll: true });
+          });
+        });
+      }
       const storedProgram = sessionStorage.getItem('umaProgramId');
       if (storedProgram && programs.some(function (program) { return program.program_id === storedProgram; })) {
         select.value = storedProgram;
       } else {
         sessionStorage.removeItem('umaProgramId');
       }
+      select.addEventListener('change', function () {
+        if (select.value) sessionStorage.setItem('umaProgramId', select.value);
+      });
       return true;
     } catch (error) {
       setError('step1-error', 'We’re unable to load program options at this time. Please try again shortly.');
       const nextButton = form.querySelector('[data-next-step="2"]');
+      const loadError = document.getElementById('program-load-error');
+      if (loadError) loadError.textContent = 'Program options are currently unavailable. Please try again shortly.';
       if (nextButton) nextButton.disabled = true;
       return false;
     }

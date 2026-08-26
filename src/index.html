@@ -53,53 +53,262 @@
 
             <div class="col-lg-7 col-md-7 mx-auto">
               <form
-                id="zipform"
+                id="leadform"
                 class="form-card"
-                action="programs/connect/form-update-health.html"
                 method="POST"
-                aria-label="Program interest form"
+                action="#"
                 novalidate
+                data-form-type="uma-lead"
+                aria-live="polite"
               >
-                <div class="badge-row">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"
-                    />
-                    <path
-                      d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0"
-                    />
-                  </svg>
-                  <span>No spam calls. No junk mail. Guaranteed.</span>
+                <input type="hidden" name="lead[service_leadid]" id="leadid_token" />
+                <input type="hidden" name="lead[service_trusted_form]" id="xxTrustedFormCertUrl_0" value="" />
+                <input type="hidden" name="subid4" id="subid4" />
+                <input type="hidden" name="subid2" id="subid2" />
+                <input type="hidden" name="subid3" id="subid3" />
+                <input type="hidden" name="meta_event_id" id="meta_event_id" />
+                <input type="hidden" name="utm_source" id="utm_source" />
+                <input type="hidden" name="utm_medium" id="utm_medium" />
+                <input type="hidden" name="utm_campaign" id="utm_campaign" />
+                <input type="hidden" name="utm_content" id="utm_content" />
+                <input type="hidden" name="campaign_id" id="campaign_id" />
+                <input type="hidden" id="leadid_tcpa_disclosure" name="lead_consent[tcpa_consent]" value="Y" />
+
+                <div class="form-step is-visible" data-step="1">
+                  <div class="form-step-label">1/3</div>
+                  <div class="mb-3">
+                    <label for="lead_education_program_id" class="form-label">What program interest you most?</label>
+                    <select
+                      id="lead_education_program_id"
+                      name="lead_education[program_id]"
+                      class="form-select"
+                      required
+                      aria-required="true"
+                    >
+                      <option selected disabled value="">Please Select</option>
+                    </select>
+                    <span class="error-message" id="step1-error" aria-live="polite"></span>
+                  </div>
+
+                  <div class="form-button-row">
+                    <button class="btn btn-primary" type="button" data-next-step="2">Next</button>
+                  </div>
                 </div>
 
-                <div class="mb-3">
-                  <label for="lead_education_program_id" class="form-label">
-                    What program interest you most?
-                  </label>
-                  <select
-                    id="lead_education_program_id"
-                    name="lead_education[program_id]"
-                    class="form-select"
-                    required
-                    aria-required="true"
-                  >
-                    <option selected disabled value="">Please Select</option>
-                  </select>
-                  <span class="error-message" id="program-select-error" aria-live="polite"></span>
+                <div class="form-step" data-step="2">
+                  <div class="form-step-label">2/3</div>
+
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="lead_education_grad_year" class="form-label">Highschool Graduation Year*</label>
+                      <select id="lead_education_grad_year" name="lead_education[grad_year]" class="form-select" required>
+                        <option selected disabled value="">Please Select</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                        <option value="2020">2020</option>
+                        <option value="2019">2019</option>
+                        <option value="2018">2018</option>
+                        <option value="2017">2017</option>
+                        <option value="2016">2016</option>
+                        <option value="2015">2015</option>
+                        <option value="2014">2014</option>
+                        <option value="2013">2013</option>
+                        <option value="2012">2012</option>
+                        <option value="2011">2011</option>
+                        <option value="2010">2010</option>
+                        <option value="2009">2009</option>
+                        <option value="2008">2008</option>
+                        <option value="2007">2007</option>
+                        <option value="2006">2006</option>
+                        <option value="2005">2005</option>
+                        <option value="2004">2004</option>
+                        <option value="2003">2003</option>
+                        <option value="2002">2002</option>
+                        <option value="2001">2001</option>
+                        <option value="2000">2000</option>
+                        <option value="1999">1999</option>
+                        <option value="1998">1998</option>
+                        <option value="1997">1997</option>
+                        <option value="1996">1996</option>
+                      </select>
+                      <span class="error-message" id="grad-year-error" aria-live="polite"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                      <label for="lead_education_education_level_id" class="form-label">Highest Level of Education*</label>
+                      <select id="lead_education_education_level_id" name="lead_education[education_level_id]" class="form-select" required>
+                        <option selected disabled value="">Please Select</option>
+                        <option value="2331">GED</option>
+                        <option value="2332">High School Graduate</option>
+                        <option value="2333">Some College</option>
+                        <option value="2334">Associate's Degree</option>
+                        <option value="2335">Bachelor's Degree</option>
+                        <option value="2336">Master's Degree</option>
+                        <option value="2337">Doctoral Degree</option>
+                      </select>
+                      <span class="error-message" id="education-error" aria-live="polite"></span>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mt-1">
+                    <div class="col-12">
+                      <label for="lead_address_address_visible" class="form-label">Street Address*</label>
+                      <input
+                        id="lead_address_address_visible"
+                        type="text"
+                        class="form-control"
+                        placeholder="Start typing your address"
+                        autocomplete="off"
+                        required
+                      />
+                      <input type="hidden" id="lead_address_address" name="lead_address[address]" />
+                      <div id="addressValidationMessage" class="field-status is-error hidden" aria-live="polite"></div>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                      <label for="lead_address_city" class="form-label">City*</label>
+                      <input id="lead_address_city" name="lead_address[city]" type="text" class="form-control" autocomplete="address-level2" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label for="lead_address_state" class="form-label">State*</label>
+                      <select id="lead_address_state" name="lead_address[state]" class="form-select" autocomplete="address-level1" required>
+                        <option selected disabled value="">Select Your State</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                        <option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option>
+                        <option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option>
+                        <option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option>
+                        <option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option>
+                        <option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option>
+                        <option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option>
+                        <option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option>
+                        <option value="NY">New York</option>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="PR">Puerto Rico</option>
+                        <option value="RI">Rhode Island</option>
+                        <option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="AA">U.S. Armed Forces - Americas</option>
+                        <option value="AE">U.S. Armed Forces - Europe</option>
+                        <option value="AP">U.S. Armed Forces - Pacific</option>
+                        <option value="UT">Utah</option>
+                        <option value="VT">Vermont</option>
+                        <option value="VA">Virginia</option>
+                        <option value="WA">Washington</option>
+                        <option value="DC">Washington DC</option>
+                        <option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option>
+                        <option value="WY">Wyoming</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label for="lead_address_zip" class="form-label">Zipcode*</label>
+                      <input id="lead_address_zip" name="lead_address[zip]" type="text" class="form-control" autocomplete="postal-code" inputmode="numeric" required pattern="\d{5}" />
+                    </div>
+                  </div>
+
+                  <div class="form-button-row d-flex justify-content-between align-items-center gap-3">
+                    <button class="btn btn-link p-0 text-decoration-none" type="button" data-back-step="1">Back</button>
+                    <button class="btn btn-primary" type="button" data-next-step="3">Next</button>
+                  </div>
                 </div>
 
-                <div class="form-button-row">
-                  <button class="btn btn-primary" id="submitButton" type="submit">
-                    Next
-                  </button>
+                <div class="form-step" data-step="3">
+                  <div class="form-step-label">3/3</div>
+
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="lead_firstname" class="form-label">First Name*</label>
+                      <input type="text" id="lead_firstname" name="lead[firstname]" class="form-control" minlength="2" required />
+                      <span class="error-message" id="first-name-error" aria-live="polite"></span>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="lead_lastname" class="form-label">Last Name*</label>
+                      <input type="text" id="lead_lastname" name="lead[lastname]" class="form-control" minlength="2" required />
+                      <span class="error-message" id="last-name-error" aria-live="polite"></span>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                      <label for="lead_email" class="form-label">Email Address*</label>
+                      <input type="email" id="lead_email" name="lead[email]" class="form-control" maxlength="254" pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" required />
+                      <span class="error-message" id="email-error" aria-live="polite"></span>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="lead_phone1" class="form-label">Phone Number*</label>
+                      <div class="input-group">
+                        <span class="input-group-text">+1</span>
+                        <input type="tel" id="lead_phone1" name="lead[phone1]" class="form-control" inputmode="numeric" minlength="10" maxlength="10" pattern="\d{10}" autocomplete="tel-national" required />
+                      </div>
+                      <span class="error-message" id="phone-error" aria-live="polite"></span>
+                    </div>
+                  </div>
+
+                  <div class="mt-3">
+                    <label for="tcpa-check" class="form-check-label" style="font-size: x-small; line-height: 1.6;">
+                      <input id="tcpa-check" type="checkbox" required />
+                      By clicking the Request Info button below, I am providing my eSIGN signature and express written consent for Ultimate Medical Academy (UMA), and parties calling on its behalf, to call or text me at the number provided above for purposes relating to educational opportunities with UMA, including through the use of automatic telephone dialing technology. I am authorized to consent to receive these communications at the phone number provided. I understand that I am consenting to receive calls and text messages regardless of whether the number provided is on any do not call list, either now or in the future. I acknowledge that my consent is not required to enroll, and I may revoke my consent at any time. I acknowledge that all calls may be recorded.
+                    </label>
+                    <span class="error-message" id="consent-error" aria-live="polite"></span>
+                  </div>
+
+                  <div class="form-button-row d-flex justify-content-between align-items-center gap-3">
+                    <button class="btn btn-link p-0 text-decoration-none" type="button" data-back-step="2">Back</button>
+                    <button class="btn btn-primary" type="submit" id="submitButton">Request Info</button>
+                  </div>
                 </div>
+
+                <div class="form-step hidden" data-step="4" id="confirmation-step">
+                  <div class="text-center">
+                    <p class="fw-bold fs-5">Congratulations, we will contact you shortly:</p>
+                    <div class="rounded-3 shadow-sm border bg-white p-3 mx-auto" style="max-width: 420px;">
+                      <div class="d-flex align-items-center justify-content-center gap-3">
+                        <img src="image/UMA-logo.webp" alt="UMA logo" width="140" />
+                        <div>
+                          <a href="https://www.ultimatemedical.edu/future-students/programs/">Learn more about our programs</a>
+                          <div class="h4 fw-bold" style="color: #0195c6;">Ultimate Medical Academy</div>
+                          <div>Online Programs</div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="mt-3"><em>Congratulations. You're one step closer towards a future you deserve.</em></p>
+                  </div>
+                </div>
+
+                <div id="status-message" class="status-message" aria-live="polite"></div>
               </form>
             </div>
           </div>
@@ -233,43 +442,29 @@
     </footer>
 
     <script src="js/program-availability.js"></script>
+    <script src="js/function2.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', async function () {
-        var select = document.getElementById('lead_education_program_id');
-        var form = document.getElementById('zipform');
-        var error = document.getElementById('program-select-error');
-        var loadError = document.getElementById('program-load-error');
-
-        select.disabled = true;
-        try {
-          var programs = await window.UMA_PROGRAM_AVAILABILITY.loadPrograms();
-          window.UMA_PROGRAM_AVAILABILITY.populateSelect(select, programs);
-          window.UMA_PROGRAM_AVAILABILITY.renderCards(document.getElementById('program-card-list'), programs);
-        } catch (loadFailure) {
-          loadError.textContent = 'We’re unable to load program options at this time. Please try again shortly.';
-          return;
-        }
-
-        if (form && select) {
-          form.addEventListener('submit', function (event) {
-            event.preventDefault();
-            if (!select.value) {
-              error.textContent = 'Please select a program before continuing.';
-              select.focus();
-            } else {
-              error.textContent = '';
-              sessionStorage.setItem('umaProgramId', select.value);
-              window.location.assign(form.action);
-            }
-          });
-
-          document.querySelectorAll('[data-program-id]').forEach(function (link) {
-            link.addEventListener('click', function () {
-              sessionStorage.setItem('umaProgramId', link.dataset.programId);
-            });
-          });
-        }
-      });
+      (function () {
+        var tf = document.createElement('script');
+        tf.type = 'text/javascript';
+        tf.async = true;
+        tf.src = 'https://api.trustedform.com/trustedform.js?field=lead[service_trusted_form]&ping_field=xxTrustedFormPingUrl&l=' + Date.now() + Math.random();
+        var firstScript = document.getElementsByTagName('script')[0];
+        firstScript.parentNode.insertBefore(tf, firstScript);
+      })();
     </script>
+    <noscript><img src="https://api.trustedform.com/ns.gif" alt="" /></noscript>
+    <script id="LeadiDscript" type="text/javascript">
+      (function () {
+        var script = document.createElement('script');
+        script.id = 'LeadiDscript_campaign';
+        script.type = 'text/javascript';
+        script.async = true;
+        script.src = 'https://create.lidstatic.com/campaign/ee8b5d5f-f5a6-2ece-9ce4-70f7633a887f.js?snippet_version=2';
+        var anchor = document.getElementById('LeadiDscript');
+        anchor.parentNode.insertBefore(script, anchor);
+      })();
+    </script>
+    <noscript><img src="https://create.leadid.com/noscript.gif?lac=9ACA227B-1AD8-D2E0-4E30-BD871B87B3ED&amp;lck=ee8b5d5f-f5a6-2ece-9ce4-70f7633a887f&amp;snippet_version=2" alt="" /></noscript>
   </body>
 </html>

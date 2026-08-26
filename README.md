@@ -9,6 +9,8 @@ Standalone production-ready landing page for the approved Fallon UMA experience.
 - The build validates that CSV and writes `src/data/uma-kayla-programs.json` for the browser and server function.
 - `netlify/functions/submit-lead.js` is the only lead-submission path.
 - `netlify.toml` publishes `src` and deploys the server function.
+- The landing page contains the complete three-step inquiry form. Program cards select the exact configured program and scroll to that form without navigating away.
+- `src/programs/connect/form-update-health.html` remains available as a directly loadable form route.
 - LeadHoop routing, authorization, fixed fields, and submission controls are held in protected Netlify configuration rather than the public bundle.
 - The browser sends form data by HTTPS POST to the same-site function. The function supplies the protected routing fields and controls the validation classification.
 
@@ -31,11 +33,17 @@ Run `npm run build` after editing. The build stops on missing files, empty data,
 
 No application-level rate limiter is included because an in-memory counter is not reliable across serverless instances. Configure traffic controls at the Netlify edge if they become necessary.
 
+## Interaction regression checks
+
+With Chrome running in remote-debugging mode on port `9223` and the built `src` directory served on port `8888`, run `npm run check:interactions`. An optional base URL can be passed directly to `checks/interaction-qa.js` for deployed-site verification.
+
+The interaction suite tests every program card and ID, all form steps without final submission, direct-route refresh, Back/Forward behavior, JavaScript-disabled visibility, compliance tokens, content visibility, and overflow at 390, 768, 1366, and 1440 pixels. It fails if the submission function is called.
+
 ## Deployment safeguards
 
-The current operational configuration permits controlled validation submissions while preventing delivery to the client campaign. Real-lead delivery requires both the validation classification to be removed and the campaign activation lock to be enabled. Those two changes must happen only after Mariano reactivates the campaign and the project owner gives explicit approval.
+Production submission controls remain server-side in encrypted Netlify configuration. The application has no browser-visible mode switch. Set `LEAD_SUBMISSION_ENABLED=false` and redeploy to stop submissions immediately.
 
-The pages include `noindex, nofollow` while the temporary Netlify domain is in use. Remove that robots tag from both HTML documents only when the final custom domain is approved for public traffic.
+The production pages are indexable and use canonical URLs for `https://uma.back2learn.com`.
 
 ## Rollback
 

@@ -65,7 +65,7 @@
       heading.className = 'program-title';
       heading.textContent = program.program_name;
       const link = document.createElement('a');
-      link.href = 'programs/connect/form-update-health.html';
+      link.href = '#leadform';
       link.dataset.programId = program.program_id;
       link.className = 'btn btn-primary';
       link.textContent = 'Get More Info';
