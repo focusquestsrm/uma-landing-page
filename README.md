@@ -7,7 +7,7 @@ Standalone production-ready landing page for the approved Fallon UMA experience.
 - `src/` contains the public static application.
 - `src/data/uma-kayla-programs.csv` is the maintained program source for this campaign.
 - The build validates that CSV and writes `src/data/uma-kayla-programs.json` for the browser and server function.
-- `netlify/functions/submit-lead.js` is the only lead-submission path.
+- `netlify/functions/submit-lead.mjs` is the only lead-submission entry point; protected logic is held in the shared server bundle.
 - Netlify Blobs store `uma-program-availability` holds non-PII runtime status separately from the CSV.
 - The visitor, protected management, and scheduled reset functions read/write only validated `uma-health:<program-id>` records.
 - `netlify.toml` publishes `src` and deploys the server function.

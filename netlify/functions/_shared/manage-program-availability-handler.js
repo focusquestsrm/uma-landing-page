@@ -1,4 +1,4 @@
-'use strict';
+'use strict'; // Shared handler for the modern function entry point.
 
 const crypto = require('crypto');
 const {
@@ -8,7 +8,7 @@ const {
   getAvailabilityStore,
   readProgram,
   updateProgram
-} = require('./_shared/program-availability');
+} = require('./program-availability');
 
 const HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',

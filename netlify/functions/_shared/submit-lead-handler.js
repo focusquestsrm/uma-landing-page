@@ -1,13 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
-const { classifyLeadHoopResponse } = require('./_shared/leadhoop-response');
+const { classifyLeadHoopResponse } = require('./leadhoop-response');
 const {
   currentCampaignMonth,
   getAvailabilityStore,
   readProgram,
   updateProgram
-} = require('./_shared/program-availability');
+} = require('./program-availability');
 
 const FIELD_ALLOWLIST = new Set([
   'lead[firstname]', 'lead[lastname]', 'lead[email]', 'lead[phone1]',
@@ -32,7 +32,7 @@ const recentSubmissions = new Map();
 let PROGRAMS = new Set();
 let PROGRAM_CONFIGURATION_VALID = false;
 try {
-  const programData = require('../../src/data/uma-kayla-programs.json');
+  const programData = require('../../../src/data/uma-kayla-programs.json');
   const ids = new Set();
   const orders = new Set();
   if (!Array.isArray(programData) || programData.length === 0) throw new Error('invalid');

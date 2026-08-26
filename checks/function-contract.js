@@ -36,9 +36,9 @@ env(['PROGRAM', 'AVAILABILITY', 'ADMIN', 'SECRET'], 'unit-test-admin-secret');
 
 const store = new MemoryStore();
 availability.setStoreFactoryForTests(function () { return store; });
-const submit = require('../netlify/functions/submit-lead').handler;
-const getPrograms = require('../netlify/functions/get-program-availability').handler;
-const managePrograms = require('../netlify/functions/manage-program-availability').handler;
+const submit = require('../netlify/functions/_shared/submit-lead-handler').handler;
+const getPrograms = require('../netlify/functions/_shared/get-program-availability-handler').handler;
+const managePrograms = require('../netlify/functions/_shared/manage-program-availability-handler').handler;
 
 let eventSequence = 0;
 function leadEvent(programId) {
@@ -151,6 +151,16 @@ function adminEvent(body, secret) {
   store.failReads = true;
   assert.strictEqual((await getPrograms({ httpMethod: 'GET' })).statusCode, 503);
   store.failReads = false;
+
+  for (const program of availability.APPROVED_PROGRAMS) {
+    await availability.updateProgram(store, program.programId, 'available', { updatedBy: 'authorized_admin' });
+  }
+  const visitorEntry = await import('../netlify/functions/get-program-availability.mjs');
+  const visitorResponse = await visitorEntry.default(new Request('https://uma.back2learn.com/.netlify/functions/get-program-availability'));
+  assert.strictEqual(visitorResponse.status, 200);
+  assert.strictEqual((await visitorResponse.json()).programs.length, 4);
+  const submitEntry = await import('../netlify/functions/submit-lead.mjs');
+  assert.strictEqual((await submitEntry.default(new Request('https://uma.back2learn.com/.netlify/functions/submit-lead'))).status, 405);
 
   console.log('Function, availability, response, reset, and management contracts passed.');
 })().catch(function (error) { console.error(error); process.exit(1); });

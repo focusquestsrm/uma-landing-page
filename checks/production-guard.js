@@ -17,7 +17,7 @@ const publicFiles = [
 const publicSource = publicFiles.map(function (file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 }).join('\n');
-const functionSource = fs.readFileSync(path.join(root, 'netlify/functions/submit-lead.js'), 'utf8');
+const functionSource = fs.readFileSync(path.join(root, 'netlify/functions/_shared/submit-lead-handler.js'), 'utf8');
 const protectedNames = [
   ['LEAD', 'SUBMISSION', 'ENABLED'],
   ['LEAD', 'TEST', 'FLAG'],

@@ -1,9 +1,9 @@
-'use strict';
+'use strict'; // Shared handler for the modern function entry point.
 
 const {
   getAvailabilityStore,
   restoreExpiredCaps
-} = require('./_shared/program-availability');
+} = require('./program-availability');
 
 exports.handler = async function () {
   try {

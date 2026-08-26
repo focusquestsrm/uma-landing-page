@@ -4,6 +4,8 @@
 
 The UMA landing page is a static Netlify site with server-side Netlify Functions. The maintained program catalog remains `src/data/uma-kayla-programs.csv`; runtime availability is stored separately in a site-wide Netlify Blobs store named `uma-program-availability`.
 
+The public function entry points use Netlify's current Request/Response runtime so the platform supplies the Blob execution context required for strongly consistent site-store access. The tested business logic remains in non-routable shared handlers.
+
 ## Components
 
 - `get-program-availability` reads each approved campaign/program record with strong consistency, initializes missing records as available, and returns only visitor-safe fields.
