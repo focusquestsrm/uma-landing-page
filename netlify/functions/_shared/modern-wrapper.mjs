@@ -1,3 +1,8 @@
+import { getStore } from '@netlify/blobs';
+import availabilityModule from './program-availability.js';
+
+availabilityModule.configureNetlifyStore(getStore);
+
 export function toEvent(request, body) {
   const url = new URL(request.url);
   return {

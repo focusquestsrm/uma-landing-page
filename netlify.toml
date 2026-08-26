@@ -5,7 +5,6 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@netlify/blobs"]
 
 [functions."reset-program-availability"]
   schedule = "15 7 * * *"

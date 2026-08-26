@@ -1,6 +1,5 @@
 'use strict';
 
-const { getStore } = require('@netlify/blobs');
 const programData = require('../../../src/data/uma-kayla-programs.json');
 
 const CAMPAIGN = 'uma-health';
@@ -31,14 +30,22 @@ function validateApprovedPrograms(value) {
 const APPROVED_PROGRAMS = Object.freeze(validateApprovedPrograms(programData));
 const APPROVED_BY_ID = new Map(APPROVED_PROGRAMS.map(function (program) { return [program.programId, program]; }));
 
-let storeFactory = function () { return getStore({ name: STORE_NAME, consistency: 'strong' }); };
+let storeFactory = function () { throw new Error('Blob store runtime is not configured'); };
+let testStoreFactoryInstalled = false;
 
 function getAvailabilityStore() {
   return storeFactory();
 }
 
 function setStoreFactoryForTests(factory) {
-  storeFactory = factory || function () { return getStore({ name: STORE_NAME, consistency: 'strong' }); };
+  testStoreFactoryInstalled = Boolean(factory);
+  storeFactory = factory || function () { throw new Error('Blob store runtime is not configured'); };
+}
+
+function configureNetlifyStore(getStore) {
+  if (testStoreFactoryInstalled) return;
+  if (typeof getStore !== 'function') throw new Error('Invalid Blob store runtime');
+  storeFactory = function () { return getStore({ name: STORE_NAME, consistency: 'strong' }); };
 }
 
 function programKey(programId) {
@@ -158,6 +165,7 @@ module.exports = {
   readAllPrograms,
   readProgram,
   restoreExpiredCaps,
+  configureNetlifyStore,
   setStoreFactoryForTests,
   updateProgram
 };
