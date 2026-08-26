@@ -1,4 +1,5 @@
 [build]
+  command = "node scripts/build-programs.js"
   publish = "src"
   functions = "netlify/functions"
 

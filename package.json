@@ -1,0 +1,9 @@
+{
+  "name": "uma-college-matcher",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node scripts/build-programs.js",
+    "check": "node scripts/build-programs.js && node checks/program-config.js && node checks/production-guard.js && node checks/function-contract.js"
+  }
+}

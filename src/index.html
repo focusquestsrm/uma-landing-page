@@ -87,10 +87,6 @@
                     aria-required="true"
                   >
                     <option selected disabled value="">Please Select</option>
-                    <option value="227753">Healthcare and Human Services</option>
-                    <option value="227755">Medical Administrative Assistant</option>
-                    <option value="227756">Medical Billing and Coding</option>
-                    <option value="227754">Healthcare Management</option>
                   </select>
                   <span class="error-message" id="program-select-error" aria-live="polite"></span>
                 </div>
@@ -117,47 +113,8 @@
             </div>
           </div>
 
-          <div class="row g-4 justify-content-center">
-            <div class="col-md-6 col-lg-4">
-              <div class="program-card">
-                <div class="program-icon" aria-hidden="true">📄</div>
-                <h3 class="program-title">Healthcare Management</h3>
-                <a href="programs/connect/form-update-health.html" data-program-id="227754" class="btn btn-primary">
-                  Get More Info
-                </a>
-              </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-              <div class="program-card">
-                <div class="program-icon" aria-hidden="true">🗃️</div>
-                <h3 class="program-title">Medical Administrative Assistant</h3>
-                <a href="programs/connect/form-update-health.html" data-program-id="227755" class="btn btn-primary">
-                  Get More Info
-                </a>
-              </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-              <div class="program-card">
-                <div class="program-icon" aria-hidden="true">🖥️</div>
-                <h3 class="program-title">Healthcare and Human Services</h3>
-                <a href="programs/connect/form-update-health.html" data-program-id="227753" class="btn btn-primary">
-                  Get More Info
-                </a>
-              </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-              <div class="program-card">
-                <div class="program-icon" aria-hidden="true">👥</div>
-                <h3 class="program-title">Medical Billing and Coding</h3>
-                <a href="programs/connect/form-update-health.html" data-program-id="227756" class="btn btn-primary">
-                  Get More Info
-                </a>
-              </div>
-            </div>
-          </div>
+          <div class="row g-4 justify-content-center" id="program-card-list" aria-live="polite"></div>
+          <p id="program-load-error" class="status-message is-error text-center" aria-live="polite"></p>
         </div>
       </section>
 
@@ -273,10 +230,21 @@
 
     <script src="js/program-availability.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
+      document.addEventListener('DOMContentLoaded', async function () {
         var select = document.getElementById('lead_education_program_id');
         var form = document.getElementById('zipform');
         var error = document.getElementById('program-select-error');
+        var loadError = document.getElementById('program-load-error');
+
+        select.disabled = true;
+        try {
+          var programs = await window.UMA_PROGRAM_AVAILABILITY.loadPrograms();
+          window.UMA_PROGRAM_AVAILABILITY.populateSelect(select, programs);
+          window.UMA_PROGRAM_AVAILABILITY.renderCards(document.getElementById('program-card-list'), programs);
+        } catch (loadFailure) {
+          loadError.textContent = 'We’re unable to load program options at this time. Please try again shortly.';
+          return;
+        }
 
         if (form && select) {
           form.addEventListener('submit', function (event) {

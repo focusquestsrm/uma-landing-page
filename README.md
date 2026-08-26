@@ -5,12 +5,31 @@ Standalone production-ready landing page for the approved Fallon UMA experience.
 ## Architecture
 
 - `src/` contains the public static application.
+- `src/data/uma-kayla-programs.csv` is the maintained program source for this campaign.
+- The build validates that CSV and writes `src/data/uma-kayla-programs.json` for the browser and server function.
 - `netlify/functions/submit-lead.js` is the only lead-submission path.
 - `netlify.toml` publishes `src` and deploys the server function.
 - LeadHoop routing, authorization, fixed fields, and submission controls are held in protected Netlify configuration rather than the public bundle.
 - The browser sends form data by HTTPS POST to the same-site function. The function supplies the protected routing fields and controls the validation classification.
 
 TrustedForm creates a new certificate for each visitor session. The approved Jornaya campaign creates the LeadiD token. The function records only whether each value was present.
+
+## Program configuration
+
+Edit `src/data/uma-kayla-programs.csv` to manage the campaign program list. Each row requires a numeric `program_id`, a nonblank `program_name`, `active` set to `true` or `false`, and a unique positive `display_order`.
+
+- Add a program by adding a complete row with an approved LeadHoop program ID.
+- Remove a program by deleting its row.
+- Reorder programs by assigning unique `display_order` values.
+- Deactivate a program by changing `active` to `false`; inactive rows are retained in the maintained source but omitted from visitor choices and rejected by the server.
+
+Run `npm run build` after editing. The build stops on missing files, empty data, malformed rows, missing or duplicate IDs, blank names, invalid active values, or duplicate display orders. Never substitute programs from another school or campaign.
+
+## Server configuration
+
+`.env.example` lists the required setting names with nonfunctional placeholders. Real values belong only in encrypted Netlify environment variables. The server fails closed if a required value is missing or malformed, if the request origin is not explicitly allowed, or if the selected program is not active in the generated configuration.
+
+No application-level rate limiter is included because an in-memory counter is not reliable across serverless instances. Configure traffic controls at the Netlify edge if they become necessary.
 
 ## Deployment safeguards
 

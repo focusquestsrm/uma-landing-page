@@ -68,18 +68,21 @@ async function evaluate(client, expression) {
     await command(client, 'Emulation.setDeviceMetricsOverride', { width, height: width < 800 ? 1024 : 900, deviceScaleFactor: 1, mobile: width < 600 });
     await command(client, 'Page.navigate', { url: 'http://127.0.0.1:8888/' });
     await waitForLoad(client);
-    const metrics = await evaluate(client, `({innerWidth: innerWidth, scrollWidth: document.documentElement.scrollWidth, title: document.title, robots: document.querySelector('meta[name="robots"]')?.content, forbidden: /\\b(test|testing|demo|staging|preview|sandbox|development|qa)\\b/i.test(document.body.innerText), brokenImages: Array.from(document.images).filter(img => img.complete && img.naturalWidth === 0).map(img => img.src)})`);
+    await new Promise(function (resolve) { setTimeout(resolve, 300); });
+    const metrics = await evaluate(client, `({innerWidth: innerWidth, scrollWidth: document.documentElement.scrollWidth, title: document.title, robots: document.querySelector('meta[name="robots"]')?.content, forbidden: /\\b(test|testing|demo|staging|preview|sandbox|development|qa)\\b/i.test(document.body.innerText), brokenImages: Array.from(document.images).filter(img => img.complete && img.naturalWidth === 0).map(img => img.src), programIds: Array.from(document.querySelectorAll('#lead_education_program_id option')).map(option => option.value).filter(Boolean), programNames: Array.from(document.querySelectorAll('.program-title')).map(node => node.textContent)})`);
     responsive.push({ width, metrics });
     const screenshot = await command(client, 'Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     fs.writeFileSync(`.artifacts/uma-${width}.png`, Buffer.from(screenshot.data, 'base64'));
   }
 
+  await evaluate(client, `sessionStorage.setItem('umaProgramId', '227755')`);
   await command(client, 'Emulation.setDeviceMetricsOverride', { width: 390, height: 1200, deviceScaleFactor: 1, mobile: true });
   await command(client, 'Page.navigate', { url: 'http://127.0.0.1:8888/programs/connect/form-update-health.html?utm_source=review' });
   await waitForLoad(client);
   await new Promise(function (resolve) { setTimeout(resolve, 5000); });
   const formState = await evaluate(client, `(() => {
     const set = (id, value) => { const node = document.getElementById(id); node.value = value; node.dispatchEvent(new Event('input', {bubbles:true})); node.dispatchEvent(new Event('change', {bubbles:true})); };
+    const selectedProgramFromIndex = document.getElementById('lead_education_program_id').value;
     set('lead_education_program_id', '227754');
     document.querySelector('[data-next-step="2"]').click();
     set('lead_education_grad_year', '2023');
@@ -92,13 +95,26 @@ async function evaluate(client, expression) {
     return {
       url: location.href,
       step3Visible: document.querySelector('[data-step="3"]').classList.contains('is-visible'),
+      selectedProgramFromIndex,
+      selectedProgramForPayload: document.getElementById('lead_education_program_id').value,
       certificatePresent: Boolean(document.getElementById('xxTrustedFormCertUrl_0').value),
       leadIdPresent: Boolean(document.getElementById('leadid_token').value),
       forbidden: /\\b(test|testing|demo|staging|preview|sandbox|development|qa)\\b/i.test(document.body.innerText)
     };
   })()`);
 
-  console.log(JSON.stringify({ responsive, formState, browserIssues: Array.from(new Set(browserIssues)) }, null, 2));
+  await command(client, 'Network.setBlockedURLs', { urls: ['*uma-kayla-programs.json'] });
+  await command(client, 'Page.navigate', { url: 'http://127.0.0.1:8888/' });
+  await waitForLoad(client);
+  await new Promise(function (resolve) { setTimeout(resolve, 500); });
+  const missingProgramData = await evaluate(client, `({
+    selectDisabled: document.getElementById('lead_education_program_id').disabled,
+    cardCount: document.querySelectorAll('.program-card').length,
+    controlledMessage: document.getElementById('program-load-error').textContent
+  })`);
+  await command(client, 'Network.setBlockedURLs', { urls: [] });
+
+  console.log(JSON.stringify({ responsive, formState, missingProgramData, browserIssues: Array.from(new Set(browserIssues)) }, null, 2));
   client.socket.close();
 })().catch(function (error) {
   console.error(error);

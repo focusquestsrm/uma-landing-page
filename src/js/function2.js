@@ -36,16 +36,25 @@
     }
   }
 
-  function hydrateProgramSelection() {
+  async function hydrateProgramSelection() {
     const select = document.getElementById('lead_education_program_id');
-    if (!select) return;
-    const storedProgram = sessionStorage.getItem('umaProgramId');
-    if (storedProgram) select.value = storedProgram;
-    if (window.UMA_PROGRAM_AVAILABILITY && typeof window.UMA_PROGRAM_AVAILABILITY.getAvailablePrograms === 'function') {
-      const available = new Set(window.UMA_PROGRAM_AVAILABILITY.getAvailablePrograms().map(String));
-      Array.from(select.options).forEach(function (option) {
-        if (option.value) option.disabled = !available.has(option.value);
-      });
+    if (!select) return false;
+    select.disabled = true;
+    try {
+      const programs = await window.UMA_PROGRAM_AVAILABILITY.loadPrograms();
+      window.UMA_PROGRAM_AVAILABILITY.populateSelect(select, programs);
+      const storedProgram = sessionStorage.getItem('umaProgramId');
+      if (storedProgram && programs.some(function (program) { return program.program_id === storedProgram; })) {
+        select.value = storedProgram;
+      } else {
+        sessionStorage.removeItem('umaProgramId');
+      }
+      return true;
+    } catch (error) {
+      setError('step1-error', 'We’re unable to load program options at this time. Please try again shortly.');
+      const nextButton = form.querySelector('[data-next-step="2"]');
+      if (nextButton) nextButton.disabled = true;
+      return false;
     }
   }
 
@@ -177,11 +186,15 @@
     }
   });
 
-  const phone = document.getElementById('lead_phone1');
-  if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
-  captureAttribution();
-  hydrateProgramSelection();
-  setAddressValue();
-  wireNavigation();
-  updateStep(1);
+  async function initialize() {
+    const phone = document.getElementById('lead_phone1');
+    if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
+    captureAttribution();
+    setAddressValue();
+    wireNavigation();
+    updateStep(1);
+    await hydrateProgramSelection();
+  }
+
+  initialize();
 })();

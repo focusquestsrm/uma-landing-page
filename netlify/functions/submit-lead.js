@@ -1,37 +1,44 @@
 'use strict';
 
 const FIELD_ALLOWLIST = new Set([
-  'lead[firstname]',
-  'lead[lastname]',
-  'lead[email]',
-  'lead[phone1]',
-  'lead[service_trusted_form]',
-  'lead[service_leadid]',
-  'lead_consent[tcpa_consent]',
-  'lead_education[program_id]',
-  'lead_education[grad_year]',
-  'lead_education[education_level_id]',
-  'lead_address[address]',
-  'lead_address[city]',
-  'lead_address[state]',
-  'lead_address[zip]',
-  'subid2',
-  'subid3',
-  'subid4',
-  'meta_event_id',
-  'utm_source',
-  'utm_medium',
-  'utm_campaign',
-  'utm_content',
-  'campaign_id'
+  'lead[firstname]', 'lead[lastname]', 'lead[email]', 'lead[phone1]',
+  'lead[service_trusted_form]', 'lead[service_leadid]', 'lead_consent[tcpa_consent]',
+  'lead_education[program_id]', 'lead_education[grad_year]', 'lead_education[education_level_id]',
+  'lead_address[address]', 'lead_address[city]', 'lead_address[state]', 'lead_address[zip]',
+  'subid2', 'subid3', 'subid4', 'meta_event_id',
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'campaign_id'
 ]);
-
-const PROGRAMS = new Set(['227753', '227754', '227755', '227756']);
+const SERVER_FIELDS = new Set([
+  'lead[media_type]', 'lead[test]', 'lead[ip]', 'lead[signup_url]', 'campaign_code',
+  'lead_education[campus_id]', 'lead_education[start_date]', 'lead_background[internet_pc]'
+]);
 const RESPONSE_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff'
 };
+
+let PROGRAMS = new Set();
+let PROGRAM_CONFIGURATION_VALID = false;
+try {
+  const programData = require('../../src/data/uma-kayla-programs.json');
+  const ids = new Set();
+  const orders = new Set();
+  if (!Array.isArray(programData) || programData.length === 0) throw new Error('invalid');
+  programData.forEach(function (program) {
+    const id = String(program && program.program_id || '');
+    if (!/^\d+$/.test(id) || !String(program.program_name || '').trim() || typeof program.active !== 'boolean' ||
+        !Number.isInteger(program.display_order) || program.display_order < 1 || ids.has(id) || orders.has(program.display_order)) {
+      throw new Error('invalid');
+    }
+    ids.add(id);
+    orders.add(program.display_order);
+    if (program.active) PROGRAMS.add(id);
+  });
+  PROGRAM_CONFIGURATION_VALID = PROGRAMS.size > 0;
+} catch (error) {
+  PROGRAMS = new Set();
+}
 
 function key(parts) {
   return parts.join('_');
@@ -41,16 +48,65 @@ function setting(parts) {
   return process.env[key(parts)];
 }
 
-function enabled(parts) {
-  return String(setting(parts)).toLowerCase() === 'true';
+function clean(value, limit) {
+  return String(value || '').trim().slice(0, limit);
 }
 
 function reply(statusCode, body) {
   return { statusCode, headers: RESPONSE_HEADERS, body: JSON.stringify(body) };
 }
 
-function clean(value, limit) {
-  return String(value || '').trim().slice(0, limit);
+function secureUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' ? parsed.toString() : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function readConfiguration() {
+  const booleans = {
+    submission: setting(['LEAD', 'SUBMISSION', 'ENABLED']),
+    validation: setting(['LEAD', 'TEST', 'FLAG']),
+    campaign: setting(['LEADHOOP', 'CAMPAIGN', 'ENABLED'])
+  };
+  if (Object.values(booleans).some(function (value) { return value !== 'true' && value !== 'false'; })) return null;
+
+  const originsValue = setting(['ALLOWED', 'ORIGINS']);
+  const origins = String(originsValue || '').split(',').map(function (value) {
+    try { return new URL(value.trim()).origin; } catch (error) { return ''; }
+  }).filter(Boolean);
+
+  let fixedFields;
+  try {
+    fixedFields = JSON.parse(setting(['LEADHOOP', 'FIXED', 'FIELDS']));
+    if (!fixedFields || Array.isArray(fixedFields) || typeof fixedFields !== 'object') return null;
+    if (Object.keys(fixedFields).some(function (name) { return SERVER_FIELDS.has(name); })) return null;
+  } catch (error) {
+    return null;
+  }
+
+  const config = {
+    submissionEnabled: booleans.submission === 'true',
+    validationFlag: booleans.validation === 'true',
+    campaignEnabled: booleans.campaign === 'true',
+    origins,
+    endpoint: secureUrl(setting(['LEADHOOP', 'ENDPOINT'])),
+    authorization: clean(setting(['LEADHOOP', 'AUTHORIZATION']), 1000),
+    campaignCode: clean(setting(['LEADHOOP', 'CAMPAIGN', 'CODE']), 500),
+    campusId: clean(setting(['LEADHOOP', 'CAMPUS', 'ID']), 100),
+    signupUrl: clean(setting(['LEAD', 'SIGNUP', 'URL']), 500),
+    fixedFields,
+    capEndpoint: secureUrl(setting(['PROGRAM', 'CAP', 'ENDPOINT'])),
+    capCampaign: clean(setting(['PROGRAM', 'CAP', 'CAMPAIGN']), 500),
+    rejectedRedirect: secureUrl(setting(['REJECTED', 'LEAD', 'REDIRECT']))
+  };
+
+  if (!PROGRAM_CONFIGURATION_VALID || config.origins.length === 0 || !config.endpoint || !config.authorization ||
+      !config.campaignCode || !config.campusId || !config.signupUrl || !config.capEndpoint ||
+      !config.capCampaign || !config.rejectedRedirect) return null;
+  return config;
 }
 
 function clientAddress(event) {
@@ -58,57 +114,48 @@ function clientAddress(event) {
   return clean(forwarded ? forwarded.split(',')[0] : '', 64);
 }
 
-function hasSameOrigin(event) {
+function hasAllowedOrigin(event, allowedOrigins) {
   const requestHost = clean(event.headers && (event.headers.host || event.headers.Host), 255);
   const requestOrigin = clean(event.headers && (event.headers.origin || event.headers.Origin), 500);
   if (!requestHost || !requestOrigin) return false;
   try {
-    return new URL(requestOrigin).host === requestHost;
+    const origin = new URL(requestOrigin);
+    return origin.host === requestHost && allowedOrigins.includes(origin.origin);
   } catch (error) {
     return false;
   }
 }
 
-function makePayload(event) {
+function makePayload(event, config) {
   const inbound = new URLSearchParams(event.body || '');
   const outbound = new URLSearchParams();
-
   for (const [name, value] of inbound.entries()) {
     if (FIELD_ALLOWLIST.has(name)) outbound.set(name, clean(value, 500));
   }
-
   const programId = outbound.get('lead_education[program_id]');
   if (!PROGRAMS.has(programId)) return null;
 
+  Object.entries(config.fixedFields).forEach(function (entry) {
+    outbound.set(entry[0], clean(entry[1], 500));
+  });
   outbound.set('lead[media_type]', 'noncallcenter');
-  outbound.set('lead[test]', enabled(['LEAD', 'TEST', 'FLAG']) ? 'true' : 'false');
+  outbound.set('lead[test]', config.validationFlag ? 'true' : 'false');
   outbound.set('lead[ip]', clientAddress(event));
-  outbound.set('lead[signup_url]', setting(['LEAD', 'SIGNUP', 'URL']) || '');
-  outbound.set('campaign_code', setting(['LEADHOOP', 'CAMPAIGN', 'CODE']) || '');
-  outbound.set('lead_education[campus_id]', setting(['LEADHOOP', 'CAMPUS', 'ID']) || '');
+  outbound.set('lead[signup_url]', config.signupUrl);
+  outbound.set('campaign_code', config.campaignCode);
+  outbound.set('lead_education[campus_id]', config.campusId);
   outbound.set('lead_education[start_date]', 'Immediately');
   outbound.set('lead_background[internet_pc]', 'Y');
-
-  const fixedFields = setting(['LEADHOOP', 'FIXED', 'FIELDS']);
-  if (fixedFields) {
-    const parsed = JSON.parse(fixedFields);
-    Object.entries(parsed).forEach(function (entry) {
-      outbound.set(entry[0], clean(entry[1], 500));
-    });
-  }
-
   return outbound;
 }
 
-async function recordProgramCap(programId) {
-  const capEndpoint = setting(['PROGRAM', 'CAP', 'ENDPOINT']);
-  const capCampaign = setting(['PROGRAM', 'CAP', 'CAMPAIGN']);
-  if (!capEndpoint || !capCampaign || !PROGRAMS.has(programId)) return;
+async function recordProgramCap(programId, config) {
+  if (!PROGRAMS.has(programId)) return;
   try {
-    await fetch(capEndpoint, {
+    await fetch(config.capEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaign: capCampaign, programId })
+      body: JSON.stringify({ campaign: config.capCampaign, programId })
     });
   } catch (error) {
     console.error(JSON.stringify({ event: 'program_cap_update', completed: false }));
@@ -120,63 +167,39 @@ exports.handler = async function (event) {
     return { statusCode: 405, headers: Object.assign({ Allow: 'POST' }, RESPONSE_HEADERS), body: JSON.stringify({ outcome: 'unavailable' }) };
   }
 
-  if (!hasSameOrigin(event) || (event.body || '').length > 100000) {
-    return reply(400, { outcome: 'unavailable' });
-  }
-
-  const submissionEnabled = enabled(['LEAD', 'SUBMISSION', 'ENABLED']);
-  const validationFlag = enabled(['LEAD', 'TEST', 'FLAG']);
-  const campaignEnabled = enabled(['LEADHOOP', 'CAMPAIGN', 'ENABLED']);
-  if (!submissionEnabled || (!validationFlag && !campaignEnabled)) {
+  const config = readConfiguration();
+  if (!config || !hasAllowedOrigin(event, config.origins) || (event.body || '').length > 100000 ||
+      !config.submissionEnabled || (!config.validationFlag && !config.campaignEnabled)) {
     return reply(503, { outcome: 'unavailable' });
   }
 
-  let payload;
-  try {
-    payload = makePayload(event);
-  } catch (error) {
-    return reply(503, { outcome: 'unavailable' });
-  }
+  const payload = makePayload(event, config);
   if (!payload) return reply(400, { outcome: 'unavailable' });
 
-  const certificatePresent = Boolean(payload.get('lead[service_trusted_form]'));
-  const leadIdPresent = Boolean(payload.get('lead[service_leadid]'));
-  console.info(JSON.stringify({ event: 'compliance_presence', trustedForm: certificatePresent, leadId: leadIdPresent }));
-
-  const endpoint = setting(['LEADHOOP', 'ENDPOINT']);
-  const authorization = setting(['LEADHOOP', 'AUTHORIZATION']);
-  const rejectedRedirect = setting(['REJECTED', 'LEAD', 'REDIRECT']);
-  if (!endpoint || !authorization || !rejectedRedirect || !payload.get('campaign_code') || !payload.get('lead_education[campus_id]') || !payload.get('lead[signup_url]')) {
-    return reply(503, { outcome: 'unavailable' });
-  }
+  console.info(JSON.stringify({
+    event: 'compliance_presence',
+    trustedForm: Boolean(payload.get('lead[service_trusted_form]')),
+    leadId: Boolean(payload.get('lead[service_leadid]'))
+  }));
 
   const controller = new AbortController();
   const timeout = setTimeout(function () { controller.abort(); }, 12000);
   try {
-    const vendorResponse = await fetch(endpoint + '?' + payload.toString(), {
+    const vendorResponse = await fetch(config.endpoint + '?' + payload.toString(), {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: authorization
-      },
+      headers: { Accept: 'application/json', Authorization: config.authorization },
       signal: controller.signal
     });
     if (!vendorResponse.ok) return reply(502, { outcome: 'unavailable' });
 
     const vendorResult = await vendorResponse.json();
-    if (vendorResult && vendorResult.status === 'success') {
-      return reply(200, { outcome: 'accepted' });
-    }
-
+    if (vendorResult && vendorResult.status === 'success') return reply(200, { outcome: 'accepted' });
     if (vendorResult && vendorResult.status === 'failure') {
       const reasons = vendorResult.reason && Array.isArray(vendorResult.reason.base) ? vendorResult.reason.base : [];
       if (reasons.some(function (reason) { return /reached the monthly (offer|campaign) cap for program/i.test(String(reason)); })) {
-        await recordProgramCap(payload.get('lead_education[program_id]'));
+        await recordProgramCap(payload.get('lead_education[program_id]'), config);
       }
-      return reply(200, {
-        outcome: 'redirect',
-        location: rejectedRedirect
-      });
+      return reply(200, { outcome: 'redirect', location: config.rejectedRedirect });
     }
     return reply(502, { outcome: 'unavailable' });
   } catch (error) {

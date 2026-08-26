@@ -16,6 +16,10 @@ env(['LEADHOOP', 'CAMPAIGN', 'CODE'], 'preserved');
 env(['LEADHOOP', 'CAMPUS', 'ID'], 'preserved-campus');
 env(['LEAD', 'SIGNUP', 'URL'], 'preserved-source');
 env(['REJECTED', 'LEAD', 'REDIRECT'], 'https://redirect.invalid/ineligible');
+env(['PROGRAM', 'CAP', 'ENDPOINT'], 'https://cap.invalid/program');
+env(['PROGRAM', 'CAP', 'CAMPAIGN'], 'preserved-cap');
+env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
+env(['ALLOWED', 'ORIGINS'], 'https://back2learn-uma.netlify.app');
 
 const event = {
   httpMethod: 'POST',
@@ -45,6 +49,7 @@ const event = {
   assert.match(outboundUrl, /lead%5Btest%5D=true/);
   assert.doesNotMatch(outboundUrl, /lead%5Btest%5D=false/);
   assert.match(outboundUrl, /campaign_code=preserved/);
+  assert.match(outboundUrl, /lead_education%5Bprogram_id%5D=227754/);
 
   global.fetch = async function () {
     return { ok: true, json: async function () { return { status: 'failure', reason: { base: [] } }; } };
@@ -56,6 +61,11 @@ const event = {
   env(['LEADHOOP', 'CAMPAIGN', 'ENABLED'], 'false');
   const locked = await submit(event);
   assert.strictEqual(locked.statusCode, 503);
+
+  env(['LEAD', 'TEST', 'FLAG'], 'true');
+  delete process.env[['LEADHOOP', 'AUTHORIZATION'].join('_')];
+  const missingConfiguration = await submit(event);
+  assert.strictEqual(missingConfiguration.statusCode, 503);
 
   console.log('Function contract passed.');
 })().catch(function (error) {
