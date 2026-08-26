@@ -26,10 +26,14 @@ const checks = [
   ['browser mode control', !/lead\[test\]|submissionEnabled|validationFlag/i.test(publicSource)],
   ['direct vendor submission', !/back2learn-post\.leadhoop\.com/i.test(publicSource)],
   ['same-site submission', /\/\.netlify\/functions\/submit-lead/.test(publicSource)],
-  ['robots directive', (publicSource.match(/name="robots" content="noindex, nofollow"/g) || []).length === 2],
+  ['indexing enabled', !/noindex|nofollow/i.test(publicSource)],
+  ['production canonicals', (publicSource.match(/rel="canonical" href="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
+  ['production metadata', (publicSource.match(/property="og:url" content="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
   ['TrustedForm session script', /api\.trustedform\.com\/trustedform\.js/.test(publicSource)],
   ['Jornaya campaign script', /create\.lidstatic\.com\/campaign\//.test(publicSource)],
   ['server classification', /outbound\.set\('lead\[test\]'/.test(functionSource)],
+  ['client duplicate lock', /submissionInProgress/.test(publicSource)],
+  ['server duplicate window', /reserveSubmission/.test(functionSource)],
   ['protected environment names', protectedNames.every(function (name) { return !functionSource.includes(name); })],
   ['routing value absent from browser', !/campaign_code|lead_education\[campus_id\]|trkhoop\.com\/redirects\//.test(publicSource)]
 ];

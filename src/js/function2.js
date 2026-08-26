@@ -5,6 +5,7 @@
   if (!form) return;
 
   const endpoint = '/.netlify/functions/submit-lead';
+  let submissionInProgress = false;
   const genericError = 'We’re unable to process your request at this time. Please try again shortly.';
 
   function setError(elementId, message) {
@@ -153,7 +154,9 @@
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    if (submissionInProgress) return;
     if (!validateStepThree()) return;
+    submissionInProgress = true;
     const button = document.getElementById('submitButton');
     button.disabled = true;
     button.textContent = 'Submitting...';
@@ -179,8 +182,8 @@
       }
       throw new Error('Unable to complete request');
     } catch (error) {
+      submissionInProgress = false;
       displayStatus(genericError, 'error');
-    } finally {
       button.disabled = false;
       button.textContent = 'Request Info';
     }

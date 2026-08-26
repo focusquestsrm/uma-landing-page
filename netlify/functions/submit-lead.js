@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('crypto');
+
 const FIELD_ALLOWLIST = new Set([
   'lead[firstname]', 'lead[lastname]', 'lead[email]', 'lead[phone1]',
   'lead[service_trusted_form]', 'lead[service_leadid]', 'lead_consent[tcpa_consent]',
@@ -17,6 +19,8 @@ const RESPONSE_HEADERS = {
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff'
 };
+const DUPLICATE_WINDOW_MS = 2 * 60 * 1000;
+const recentSubmissions = new Map();
 
 let PROGRAMS = new Set();
 let PROGRAM_CONFIGURATION_VALID = false;
@@ -149,6 +153,28 @@ function makePayload(event, config) {
   return outbound;
 }
 
+function submissionFingerprint(payload) {
+  const fields = [
+    'lead[firstname]', 'lead[lastname]', 'lead[email]', 'lead[phone1]',
+    'lead_address[zip]', 'lead_education[program_id]'
+  ];
+  const normalized = fields.map(function (name) {
+    return String(payload.get(name) || '').trim().toLowerCase();
+  }).join('\u001f');
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+function reserveSubmission(payload) {
+  const now = Date.now();
+  for (const entry of recentSubmissions.entries()) {
+    if (now - entry[1] > DUPLICATE_WINDOW_MS) recentSubmissions.delete(entry[0]);
+  }
+  const fingerprint = submissionFingerprint(payload);
+  if (recentSubmissions.has(fingerprint)) return '';
+  recentSubmissions.set(fingerprint, now);
+  return fingerprint;
+}
+
 async function recordProgramCap(programId, config) {
   if (!PROGRAMS.has(programId)) return;
   try {
@@ -175,6 +201,8 @@ exports.handler = async function (event) {
 
   const payload = makePayload(event, config);
   if (!payload) return reply(400, { outcome: 'unavailable' });
+  const fingerprint = reserveSubmission(payload);
+  if (!fingerprint) return reply(409, { outcome: 'unavailable' });
 
   console.info(JSON.stringify({
     event: 'compliance_presence',
@@ -190,7 +218,10 @@ exports.handler = async function (event) {
       headers: { Accept: 'application/json', Authorization: config.authorization },
       signal: controller.signal
     });
-    if (!vendorResponse.ok) return reply(502, { outcome: 'unavailable' });
+    if (!vendorResponse.ok) {
+      recentSubmissions.delete(fingerprint);
+      return reply(502, { outcome: 'unavailable' });
+    }
 
     const vendorResult = await vendorResponse.json();
     if (vendorResult && vendorResult.status === 'success') return reply(200, { outcome: 'accepted' });
@@ -201,8 +232,10 @@ exports.handler = async function (event) {
       }
       return reply(200, { outcome: 'redirect', location: config.rejectedRedirect });
     }
+    recentSubmissions.delete(fingerprint);
     return reply(502, { outcome: 'unavailable' });
   } catch (error) {
+    recentSubmissions.delete(fingerprint);
     console.error(JSON.stringify({ event: 'submission_error', completed: false }));
     return reply(502, { outcome: 'unavailable' });
   } finally {
