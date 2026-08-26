@@ -1,6 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
+const { classifyLeadHoopResponse } = require('./_shared/leadhoop-response');
+const {
+  currentCampaignMonth,
+  getAvailabilityStore,
+  readProgram,
+  updateProgram
+} = require('./_shared/program-availability');
 
 const FIELD_ALLOWLIST = new Set([
   'lead[firstname]', 'lead[lastname]', 'lead[email]', 'lead[phone1]',
@@ -102,14 +109,13 @@ function readConfiguration() {
     campusId: clean(setting(['LEADHOOP', 'CAMPUS', 'ID']), 100),
     signupUrl: clean(setting(['LEAD', 'SIGNUP', 'URL']), 500),
     fixedFields,
-    capEndpoint: secureUrl(setting(['PROGRAM', 'CAP', 'ENDPOINT'])),
-    capCampaign: clean(setting(['PROGRAM', 'CAP', 'CAMPAIGN']), 500),
-    rejectedRedirect: secureUrl(setting(['REJECTED', 'LEAD', 'REDIRECT']))
+    acceptedRedirect: secureUrl(setting(['ACCEPTED', 'LEAD', 'REDIRECT', 'URL'])),
+    failedRedirect: secureUrl(setting(['FAILED', 'LEAD', 'REDIRECT', 'URL']))
   };
 
   if (!PROGRAM_CONFIGURATION_VALID || config.origins.length === 0 || !config.endpoint || !config.authorization ||
-      !config.campaignCode || !config.campusId || !config.signupUrl || !config.capEndpoint ||
-      !config.capCampaign || !config.rejectedRedirect) return null;
+      !config.campaignCode || !config.campusId || !config.signupUrl || !config.acceptedRedirect ||
+      !config.failedRedirect) return null;
   return config;
 }
 
@@ -175,19 +181,6 @@ function reserveSubmission(payload) {
   return fingerprint;
 }
 
-async function recordProgramCap(programId, config) {
-  if (!PROGRAMS.has(programId)) return;
-  try {
-    await fetch(config.capEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaign: config.capCampaign, programId })
-    });
-  } catch (error) {
-    console.error(JSON.stringify({ event: 'program_cap_update', completed: false }));
-  }
-}
-
 exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: Object.assign({ Allow: 'POST' }, RESPONSE_HEADERS), body: JSON.stringify({ outcome: 'unavailable' }) };
@@ -201,6 +194,17 @@ exports.handler = async function (event) {
 
   const payload = makePayload(event, config);
   if (!payload) return reply(400, { outcome: 'unavailable' });
+
+  let availabilityStore;
+  try {
+    availabilityStore = getAvailabilityStore();
+    const availability = await readProgram(availabilityStore, payload.get('lead_education[program_id]'));
+    if (availability.status !== 'available') return reply(200, { outcome: 'failed', location: config.failedRedirect });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'program_availability_read', completed: false }));
+    return reply(503, { outcome: 'unavailable' });
+  }
+
   const fingerprint = reserveSubmission(payload);
   if (!fingerprint) return reply(409, { outcome: 'unavailable' });
 
@@ -224,16 +228,36 @@ exports.handler = async function (event) {
     }
 
     const vendorResult = await vendorResponse.json();
-    if (vendorResult && vendorResult.status === 'success') return reply(200, { outcome: 'accepted' });
-    if (vendorResult && vendorResult.status === 'failure') {
-      const reasons = vendorResult.reason && Array.isArray(vendorResult.reason.base) ? vendorResult.reason.base : [];
-      if (reasons.some(function (reason) { return /reached the monthly (offer|campaign) cap for program/i.test(String(reason)); })) {
-        await recordProgramCap(payload.get('lead_education[program_id]'), config);
-      }
-      return reply(200, { outcome: 'redirect', location: config.rejectedRedirect });
+    const classification = classifyLeadHoopResponse(vendorResult);
+    if (classification.technicalFailure) {
+      recentSubmissions.delete(fingerprint);
+      return reply(502, { outcome: 'unavailable' });
     }
-    recentSubmissions.delete(fingerprint);
-    return reply(502, { outcome: 'unavailable' });
+    if (classification.accepted) return reply(200, { outcome: 'accepted', location: config.acceptedRedirect });
+    if (classification.status) {
+      const settings = {
+        updatedBy: 'leadhoop_response',
+        reasonCategory: classification.reasonCategory
+      };
+      if (classification.status === 'capped') settings.effectiveMonth = currentCampaignMonth();
+      const statusUpdate = await updateProgram(
+        availabilityStore,
+        payload.get('lead_education[program_id]'),
+        classification.status,
+        settings
+      );
+      if (statusUpdate.changed) {
+        console.info(JSON.stringify({
+          event: 'program_status_update',
+          programId: statusUpdate.record.programId,
+          oldStatus: statusUpdate.oldRecord.status,
+          newStatus: statusUpdate.record.status,
+          timestamp: statusUpdate.record.updatedAt,
+          updateSource: statusUpdate.record.updatedBy
+        }));
+      }
+    }
+    return reply(200, { outcome: 'failed', location: config.failedRedirect });
   } catch (error) {
     recentSubmissions.delete(fingerprint);
     console.error(JSON.stringify({ event: 'submission_error', completed: false }));

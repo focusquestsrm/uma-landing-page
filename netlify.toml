@@ -1,10 +1,13 @@
 [build]
-  command = "node scripts/build-programs.js"
+  command = "npm run build"
   publish = "src"
   functions = "netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
+
+[functions."reset-program-availability"]
+  schedule = "15 7 * * *"
 
 [[headers]]
   for = "/*"

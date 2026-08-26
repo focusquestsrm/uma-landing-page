@@ -9,7 +9,10 @@ const publicFiles = [
   'src/programs/connect/form-update-health.html',
   'src/css/styles.css',
   'src/js/function2.js',
-  'src/js/program-availability.js'
+  'src/js/program-availability.js',
+  'src/js/google-places.js',
+  'src/js/meta-pixel.js',
+  'src/js/runtime-config.js'
 ];
 const publicSource = publicFiles.map(function (file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
@@ -26,11 +29,18 @@ const checks = [
   ['browser mode control', !/lead\[test\]|submissionEnabled|validationFlag/i.test(publicSource)],
   ['direct vendor submission', !/back2learn-post\.leadhoop\.com/i.test(publicSource)],
   ['same-site submission', /\/\.netlify\/functions\/submit-lead/.test(publicSource)],
+  ['same-site availability', /\/\.netlify\/functions\/get-program-availability/.test(publicSource)],
+  ['Fallon availability removed', !/b2l-program-availability\.edu-matcher\.com/i.test(publicSource + functionSource)],
   ['indexing enabled', !/noindex|nofollow/i.test(publicSource)],
   ['production canonicals', (publicSource.match(/rel="canonical" href="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
   ['production metadata', (publicSource.match(/property="og:url" content="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
   ['TrustedForm session script', /api\.trustedform\.com\/trustedform\.js/.test(publicSource)],
   ['Jornaya campaign script', /create\.lidstatic\.com\/campaign\//.test(publicSource)],
+  ['Meta pixel configured', /3178962768924361/.test(publicSource)],
+  ['Meta Lead gated by accepted outcome', /result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(publicSource)],
+  ['Google key not hardcoded', !/AIza[0-9A-Za-z_-]{20,}/.test(publicSource)],
+  ['Google Places restricted to US', /componentRestrictions:\s*\{\s*country:\s*'us'\s*\}/.test(publicSource)],
+  ['separate redirect configuration', /acceptedRedirect[\s\S]*failedRedirect/.test(functionSource)],
   ['server classification', /outbound\.set\('lead\[test\]'/.test(functionSource)],
   ['client duplicate lock', /submissionInProgress/.test(publicSource)],
   ['server duplicate window', /reserveSubmission/.test(functionSource)],

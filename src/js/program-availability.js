@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const dataUrl = 'data/uma-kayla-programs.json';
+  const dataUrl = '/.netlify/functions/get-program-availability';
   const iconById = {
     '227753': '🖥️',
     '227755': '🗃️',
@@ -35,7 +35,8 @@
     if (cachedPrograms) return cachedPrograms.slice();
     const response = await fetch(dataUrl, { credentials: 'same-origin', cache: 'no-store' });
     if (!response.ok) throw new Error('Program configuration could not be loaded.');
-    cachedPrograms = validatePrograms(await response.json());
+    const result = await response.json();
+    cachedPrograms = validatePrograms(result && result.programs);
     return cachedPrograms.slice();
   }
 

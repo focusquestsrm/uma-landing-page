@@ -6,6 +6,7 @@
 
   const endpoint = '/.netlify/functions/submit-lead';
   let submissionInProgress = false;
+  let submissionHandled = false;
   const genericError = 'We’re unable to process your request at this time. Please try again shortly.';
 
   function setError(elementId, message) {
@@ -31,7 +32,38 @@
     });
     const clickId = params.get('fbclid');
     const clickField = document.getElementById('subid4');
-    if (clickId && clickField) clickField.value = clickId.slice(0, 250);
+    let storedClickId = clickId;
+    try {
+      storedClickId = clickId || sessionStorage.getItem('fbclid') || localStorage.getItem('fbclid');
+      if (clickId) {
+        sessionStorage.setItem('fbclid', clickId.slice(0, 250));
+        localStorage.setItem('fbclid', clickId.slice(0, 250));
+      }
+    } catch (error) {
+      storedClickId = clickId;
+    }
+    const cookieValue = function (name) {
+      const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[1]) : '';
+    };
+    let fbc = cookieValue('_fbc');
+    let fbp = cookieValue('_fbp');
+    try {
+      fbc = fbc || sessionStorage.getItem('fbc') || localStorage.getItem('fbc');
+      fbp = fbp || sessionStorage.getItem('fbp') || localStorage.getItem('fbp');
+    } catch (error) {
+      fbc = fbc || '';
+      fbp = fbp || '';
+    }
+    if (!fbc && storedClickId) {
+      fbc = 'fb.1.' + Date.now() + '.' + storedClickId;
+      document.cookie = '_fbc=' + encodeURIComponent(fbc) + '; path=/; max-age=7776000; SameSite=Lax';
+    }
+    const fbcField = document.getElementById('subid2');
+    const fbpField = document.getElementById('subid3');
+    if (fbcField && fbc) fbcField.value = fbc.slice(0, 500);
+    if (fbpField && fbp) fbpField.value = fbp.slice(0, 500);
+    if (clickField && storedClickId) clickField.value = storedClickId.slice(0, 500);
     if (window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
     }
@@ -175,7 +207,7 @@
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
-    if (submissionInProgress) return;
+    if (submissionInProgress || submissionHandled) return;
     if (!validateStepThree()) return;
     submissionInProgress = true;
     const button = document.getElementById('submitButton');
@@ -191,14 +223,17 @@
         redirect: 'error'
       });
       const result = await response.json();
-      if (response.ok && result.outcome === 'accepted') {
+      if (response.ok && (result.outcome === 'accepted' || result.outcome === 'failed') && result.location) {
+        submissionHandled = true;
+        const eventId = String(document.getElementById('meta_event_id').value || '');
         form.reset();
         sessionStorage.removeItem('umaProgramId');
         updateStep(4);
-        return;
-      }
-      if (response.ok && result.outcome === 'redirect' && result.location) {
-        window.location.replace(result.location);
+        if (result.outcome === 'accepted') {
+          window.dispatchEvent(new CustomEvent('uma:lead-accepted', { detail: { eventId } }));
+          if (window.UMA_META) window.UMA_META.fireLead(eventId);
+        }
+        window.setTimeout(function () { window.location.assign(result.location); }, 3000);
         return;
       }
       throw new Error('Unable to complete request');
@@ -213,6 +248,11 @@
   async function initialize() {
     const phone = document.getElementById('lead_phone1');
     if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
+    const eventField = document.getElementById('meta_event_id');
+    if (eventField && !eventField.value) {
+      eventField.value = window.crypto && typeof window.crypto.randomUUID === 'function' ? window.crypto.randomUUID() :
+        'uma-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
     captureAttribution();
     setAddressValue();
     wireNavigation();
