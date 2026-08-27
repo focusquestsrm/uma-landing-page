@@ -46,6 +46,69 @@ assert.strictEqual(leadCalls[0][3].eventID, 'event-123');
 assert.strictEqual(metaDocument.appended.filter(function (node) { return /fbevents\.js/.test(node.src); }).length, 1);
 assert(/result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(formSource));
 
+function storage() {
+  const values = new Map();
+  return {
+    getItem: function (key) { return values.has(key) ? values.get(key) : null; },
+    setItem: function (key, value) { values.set(key, String(value)); },
+    removeItem: function (key) { values.delete(key); }
+  };
+}
+
+function runAttribution(cookie, search) {
+  const attributionFields = {
+    subid2: field(), subid3: field(), subid4: field(), meta_event_id: field(),
+    lead_education_program_id: Object.assign(field(), { disabled: false, addEventListener: function () {}, focus: function () {} })
+  };
+  const leadForm = {
+    addEventListener: function () {},
+    querySelectorAll: function () { return []; },
+    querySelector: function () { return null; }
+  };
+  const document = {
+    title: 'Attribution test',
+    getElementById: function (id) { return id === 'leadform' ? leadForm : attributionFields[id] || null; }
+  };
+  let cookieJar = cookie;
+  Object.defineProperty(document, 'cookie', {
+    get: function () { return cookieJar; },
+    set: function (value) { cookieJar = cookieJar ? cookieJar + '; ' + value.split(';')[0] : value.split(';')[0]; }
+  });
+  const location = { search, pathname: '/', hash: '' };
+  const context = vm.createContext({
+    document,
+    location,
+    history: { replaceState: function () { location.search = ''; } },
+    sessionStorage: storage(),
+    localStorage: storage(),
+    URLSearchParams,
+    CustomEvent: function () {},
+    crypto: { randomUUID: function () { return 'event-id'; } },
+    UMA_PROGRAM_AVAILABILITY: { loadPrograms: async function () { return []; }, populateSelect: function () {} },
+    console,
+    setTimeout
+  });
+  context.window = context;
+  context.window.location = location;
+  context.window.history = context.history;
+  context.window.crypto = context.crypto;
+  vm.runInContext(formSource, context);
+  return { fields: attributionFields, cookie: cookieJar, location };
+}
+
+const attribution = runAttribution(
+  '_fbc=fb.1.1111111111.TESTFBC; _fbp=fb.1.2222222222.TESTFBP',
+  '?fbclid=TEST-FBCLID-3333'
+);
+assert.strictEqual(attribution.fields.subid2.value, 'fb.1.1111111111.TESTFBC');
+assert.strictEqual(attribution.fields.subid3.value, 'fb.1.2222222222.TESTFBP');
+assert.strictEqual(attribution.fields.subid4.value, 'TEST-FBCLID-3333');
+assert.strictEqual(attribution.location.search, '', 'URL cleanup must happen after attribution capture');
+
+const generatedFbc = runAttribution('', '?fbclid=TEST-FBCLID-3333');
+assert.match(generatedFbc.fields.subid2.value, /^fb\.1\.\d+\.TEST-FBCLID-3333$/);
+assert(generatedFbc.cookie.includes('_fbc='), 'The application must persist its generated _fbc cookie');
+
 function field(value) {
   return { value: value || '', events: [], dispatchEvent: function (event) { this.events.push(event.type); } };
 }
@@ -95,6 +158,9 @@ pages.forEach(function (page) {
   assert(/name="lead_consent\[tcpa_consent\]"[^>]*value="Y"/.test(page));
   assert(/api\.trustedform\.com\/trustedform\.js/.test(page));
   assert(/create\.lidstatic\.com\/campaign\//.test(page));
+  assert(/name="subid2" id="subid2"/.test(page));
+  assert(/name="subid3" id="subid3"/.test(page));
+  assert(/name="subid4" id="subid4"/.test(page));
 });
 
 console.log('Meta, Google Places fallback, TCPA, and compliance feature contracts passed.');

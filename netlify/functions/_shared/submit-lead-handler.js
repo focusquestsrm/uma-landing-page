@@ -17,6 +17,7 @@ const FIELD_ALLOWLIST = new Set([
   'subid2', 'subid3', 'subid4', 'meta_event_id',
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'campaign_id'
 ]);
+const META_ATTRIBUTION_FIELDS = new Set(['subid2', 'subid3', 'subid4']);
 const SERVER_FIELDS = new Set([
   'lead[media_type]', 'lead[test]', 'lead[ip]', 'lead[signup_url]', 'campaign_code',
   'lead_education[campus_id]', 'lead_education[start_date]', 'lead_background[internet_pc]'
@@ -146,7 +147,7 @@ function makePayload(event, config) {
   if (!PROGRAMS.has(programId)) return null;
 
   Object.entries(config.fixedFields).forEach(function (entry) {
-    outbound.set(entry[0], clean(entry[1], 500));
+    if (!META_ATTRIBUTION_FIELDS.has(entry[0])) outbound.set(entry[0], clean(entry[1], 500));
   });
   outbound.set('lead[media_type]', 'noncallcenter');
   outbound.set('lead[test]', config.validationFlag ? 'true' : 'false');

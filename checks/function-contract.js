@@ -3,6 +3,17 @@
 const assert = require('assert');
 const availability = require('../netlify/functions/_shared/program-availability');
 const { classifyLeadHoopResponse } = require('../netlify/functions/_shared/leadhoop-response');
+const routineLogs = [];
+const originalConsoleInfo = console.info;
+const originalConsoleError = console.error;
+console.info = function () {
+  routineLogs.push(Array.from(arguments).join(' '));
+  originalConsoleInfo.apply(console, arguments);
+};
+console.error = function () {
+  routineLogs.push(Array.from(arguments).join(' '));
+  originalConsoleError.apply(console, arguments);
+};
 
 class MemoryStore {
   constructor() {
@@ -52,6 +63,7 @@ function leadEvent(programId) {
       'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
       'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
       'lead[service_leadid]': 'leadid-value', 'lead_education[program_id]': programId,
+      subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
       unexpected: 'must-not-pass'
     }).toString()
   };
@@ -80,6 +92,22 @@ function adminEvent(body, secret) {
   assert.deepStrictEqual(JSON.parse(accepted.body), { outcome: 'accepted', location: 'https://redirect.invalid/accepted' });
   assert.match(vendorResult.lastUrl, /lead%5Btest%5D=false/);
   assert.doesNotMatch(vendorResult.lastUrl, /lead%5Btest%5D=true|unexpected=/);
+  const attributionPayload = new URL(vendorResult.lastUrl).searchParams;
+  assert.strictEqual(attributionPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
+  assert.strictEqual(attributionPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
+  assert.strictEqual(attributionPayload.get('subid4'), 'TEST-FBCLID-3333');
+
+  env(['LEADHOOP', 'FIXED', 'FIELDS'], JSON.stringify({
+    subid2: 'must-not-overwrite-fbc', subid3: 'must-not-overwrite-fbp', subid4: 'must-not-overwrite-fbclid'
+  }));
+  global.fetch = vendorResult({ status: 'success' });
+  const protectedAttribution = await submit(leadEvent('227753'));
+  assert.strictEqual(protectedAttribution.statusCode, 200);
+  const protectedPayload = new URL(vendorResult.lastUrl).searchParams;
+  assert.strictEqual(protectedPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
+  assert.strictEqual(protectedPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
+  assert.strictEqual(protectedPayload.get('subid4'), 'TEST-FBCLID-3333');
+  env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
 
   global.fetch = vendorResult({ status: 'failure', reason: { base: ['Not eligible'] } });
   const generalFailure = await submit(leadEvent('227753'));
@@ -161,6 +189,11 @@ function adminEvent(body, secret) {
   assert.strictEqual((await visitorResponse.json()).programs.length, 4);
   const submitEntry = await import('../netlify/functions/submit-lead.mjs');
   assert.strictEqual((await submitEntry.default(new Request('https://uma.back2learn.com/.netlify/functions/submit-lead'))).status, 405);
+
+  const loggedOutput = routineLogs.join('\n');
+  ['TESTFBC', 'TESTFBP', 'TEST-FBCLID-3333', 'unit-', '212555'].forEach(function (sensitiveValue) {
+    assert(!loggedOutput.includes(sensitiveValue), `Routine logs exposed ${sensitiveValue}`);
+  });
 
   console.log('Function, availability, response, reset, and management contracts passed.');
 })().catch(function (error) { console.error(error); process.exit(1); });
