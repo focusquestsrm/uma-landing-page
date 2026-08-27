@@ -23,6 +23,10 @@ const protectedNames = [
   ['LEAD', 'TEST', 'FLAG'],
   ['LEADHOOP', 'CAMPAIGN', 'ENABLED']
 ].map(function (parts) { return parts.join('_'); });
+const htmlSource = publicFiles.filter(function (file) { return file.endsWith('.html'); }).map(function (file) {
+  return fs.readFileSync(path.join(root, file), 'utf8');
+});
+const jornayaCampaignId = '0acacf7c-5b02-c01b-61cd-3ded286da6ec';
 
 const checks = [
   ['visitor language', !/\b(?:testing|demo|staging|preview|sandbox|development|qa)\b/i.test(publicSource)],
@@ -35,7 +39,13 @@ const checks = [
   ['production canonicals', (publicSource.match(/rel="canonical" href="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
   ['production metadata', (publicSource.match(/property="og:url" content="https:\/\/uma\.back2learn\.com/g) || []).length === 2],
   ['TrustedForm session script', /api\.trustedform\.com\/trustedform\.js/.test(publicSource)],
-  ['Jornaya campaign script', /create\.lidstatic\.com\/campaign\//.test(publicSource)],
+  ['Back2Learn Jornaya campaign', htmlSource.every(function (source) {
+    return source.includes(`https://create.lidstatic.com/campaign/${jornayaCampaignId}.js?snippet_version=2`);
+  })],
+  ['one Jornaya campaign script per page', htmlSource.every(function (source) {
+    return (source.match(/id="LeadiDscript_campaign"|s\.id = 'LeadiDscript_campaign'/g) || []).length === 1 &&
+      (source.match(/create\.lidstatic\.com\/campaign\//g) || []).length === 1;
+  })],
   ['Meta pixel configured', /3178962768924361/.test(publicSource)],
   ['Meta Lead gated by accepted outcome', /result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(publicSource)],
   ['Google key not hardcoded', !/AIza[0-9A-Za-z_-]{20,}/.test(publicSource)],
