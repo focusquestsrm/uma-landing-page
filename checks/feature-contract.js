@@ -9,6 +9,7 @@ const root = path.join(__dirname, '..');
 const metaSource = fs.readFileSync(path.join(root, 'src/js/meta-pixel.js'), 'utf8');
 const placesSource = fs.readFileSync(path.join(root, 'src/js/google-places.js'), 'utf8');
 const formSource = fs.readFileSync(path.join(root, 'src/js/function2.js'), 'utf8');
+const graduationYears = require('../src/js/graduation-years');
 const pages = ['src/index.html', 'src/programs/connect/form-update-health.html'].map(function (file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 });
@@ -45,6 +46,21 @@ assert.strictEqual(leadCalls.length, 1);
 assert.strictEqual(leadCalls[0][3].eventID, 'event-123');
 assert.strictEqual(metaDocument.appended.filter(function (node) { return /fbevents\.js/.test(node.src); }).length, 1);
 assert(/result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(formSource));
+
+[
+  ['2026-06-15T12:00:00Z', 2027],
+  ['2027-06-15T12:00:00Z', 2028],
+  ['2028-06-15T12:00:00Z', 2029]
+].forEach(function (scenario) {
+  const date = new Date(scenario[0]);
+  const years = graduationYears.options(date);
+  assert.strictEqual(graduationYears.maximumYear(date), scenario[1]);
+  assert.strictEqual(years[0], scenario[1]);
+  assert.strictEqual(years[years.length - 1], 1996);
+  assert(years.every(function (year, index) { return index === 0 || years[index - 1] - year === 1; }));
+  assert(graduationYears.isValid(String(scenario[1]), date));
+  assert(!graduationYears.isValid(String(scenario[1] + 1), date));
+});
 
 function storage() {
   const values = new Map();
@@ -158,6 +174,8 @@ pages.forEach(function (page) {
   assert(/name="lead_consent\[tcpa_consent\]"[^>]*value="Y"/.test(page));
   assert(/api\.trustedform\.com\/trustedform\.js/.test(page));
   assert(/create\.lidstatic\.com\/campaign\//.test(page));
+  assert(/js\/graduation-years\.js/.test(page));
+  assert(!/<option value="20\d{2}">/.test(page), 'Graduation years must not be hardcoded in HTML');
   assert(/name="subid2" id="subid2"/.test(page));
   assert(/name="subid3" id="subid3"/.test(page));
   assert(/name="subid4" id="subid4"/.test(page));

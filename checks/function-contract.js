@@ -3,6 +3,7 @@
 const assert = require('assert');
 const availability = require('../netlify/functions/_shared/program-availability');
 const { classifyLeadHoopResponse } = require('../netlify/functions/_shared/leadhoop-response');
+const graduationYears = require('../src/js/graduation-years');
 const routineLogs = [];
 const originalConsoleInfo = console.info;
 const originalConsoleError = console.error;
@@ -63,6 +64,7 @@ function leadEvent(programId) {
       'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
       'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
       'lead[service_leadid]': 'leadid-value', 'lead_education[program_id]': programId,
+      'lead_education[grad_year]': String(graduationYears.maximumYear()),
       subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
       unexpected: 'must-not-pass'
     }).toString()
@@ -92,13 +94,15 @@ function adminEvent(body, secret) {
   assert.deepStrictEqual(JSON.parse(accepted.body), { outcome: 'accepted', location: 'https://redirect.invalid/accepted' });
   assert.match(vendorResult.lastUrl, /lead%5Btest%5D=false/);
   assert.doesNotMatch(vendorResult.lastUrl, /lead%5Btest%5D=true|unexpected=/);
+  assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), String(graduationYears.maximumYear()));
   const attributionPayload = new URL(vendorResult.lastUrl).searchParams;
   assert.strictEqual(attributionPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(attributionPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
   assert.strictEqual(attributionPayload.get('subid4'), 'TEST-FBCLID-3333');
 
   env(['LEADHOOP', 'FIXED', 'FIELDS'], JSON.stringify({
-    subid2: 'must-not-overwrite-fbc', subid3: 'must-not-overwrite-fbp', subid4: 'must-not-overwrite-fbclid'
+    subid2: 'must-not-overwrite-fbc', subid3: 'must-not-overwrite-fbp', subid4: 'must-not-overwrite-fbclid',
+    'lead_education[grad_year]': '1996'
   }));
   global.fetch = vendorResult({ status: 'success' });
   const protectedAttribution = await submit(leadEvent('227753'));
@@ -107,6 +111,7 @@ function adminEvent(body, secret) {
   assert.strictEqual(protectedPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(protectedPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
   assert.strictEqual(protectedPayload.get('subid4'), 'TEST-FBCLID-3333');
+  assert.strictEqual(protectedPayload.get('lead_education[grad_year]'), String(graduationYears.maximumYear()));
   env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
 
   global.fetch = vendorResult({ status: 'failure', reason: { base: ['Not eligible'] } });

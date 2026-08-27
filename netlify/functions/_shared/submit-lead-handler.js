@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { classifyLeadHoopResponse } = require('./leadhoop-response');
+const graduationYears = require('../../../src/js/graduation-years');
 const {
   currentCampaignMonth,
   getAvailabilityStore,
@@ -18,6 +19,7 @@ const FIELD_ALLOWLIST = new Set([
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'campaign_id'
 ]);
 const META_ATTRIBUTION_FIELDS = new Set(['subid2', 'subid3', 'subid4']);
+const GRADUATION_YEAR_FIELD = 'lead_education[grad_year]';
 const SERVER_FIELDS = new Set([
   'lead[media_type]', 'lead[test]', 'lead[ip]', 'lead[signup_url]', 'campaign_code',
   'lead_education[campus_id]', 'lead_education[start_date]', 'lead_background[internet_pc]'
@@ -144,10 +146,10 @@ function makePayload(event, config) {
     if (FIELD_ALLOWLIST.has(name)) outbound.set(name, clean(value, 500));
   }
   const programId = outbound.get('lead_education[program_id]');
-  if (!PROGRAMS.has(programId)) return null;
+  if (!PROGRAMS.has(programId) || !graduationYears.isValid(outbound.get(GRADUATION_YEAR_FIELD))) return null;
 
   Object.entries(config.fixedFields).forEach(function (entry) {
-    if (!META_ATTRIBUTION_FIELDS.has(entry[0])) outbound.set(entry[0], clean(entry[1], 500));
+    if (!META_ATTRIBUTION_FIELDS.has(entry[0]) && entry[0] !== GRADUATION_YEAR_FIELD) outbound.set(entry[0], clean(entry[1], 500));
   });
   outbound.set('lead[media_type]', 'noncallcenter');
   outbound.set('lead[test]', config.validationFlag ? 'true' : 'false');
