@@ -53,21 +53,22 @@ const getPrograms = require('../netlify/functions/_shared/get-program-availabili
 const managePrograms = require('../netlify/functions/_shared/manage-program-availability-handler').handler;
 
 let eventSequence = 0;
-function leadEvent(programId) {
+function leadEvent(programId, overrides) {
   eventSequence += 1;
+  const fields = Object.assign({
+    'lead[firstname]': 'Unit', 'lead[lastname]': 'Review',
+    'lead[email]': `unit-${eventSequence}@example.invalid`,
+    'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
+    'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
+    'lead[service_leadid]': 'leadid-value', 'lead_education[program_id]': programId,
+    'lead_education[grad_year]': '2023',
+    subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
+    unexpected: 'must-not-pass'
+  }, overrides || {});
   return {
     httpMethod: 'POST',
     headers: { host: 'uma.back2learn.com', origin: 'https://uma.back2learn.com', 'x-forwarded-for': '192.0.2.10' },
-    body: new URLSearchParams({
-      'lead[firstname]': 'Unit', 'lead[lastname]': 'Review',
-      'lead[email]': `unit-${eventSequence}@example.invalid`,
-      'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
-      'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
-      'lead[service_leadid]': 'leadid-value', 'lead_education[program_id]': programId,
-      'lead_education[grad_year]': String(graduationYears.maximumYear()),
-      subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
-      unexpected: 'must-not-pass'
-    }).toString()
+    body: new URLSearchParams(fields).toString()
   };
 }
 
@@ -94,7 +95,7 @@ function adminEvent(body, secret) {
   assert.deepStrictEqual(JSON.parse(accepted.body), { outcome: 'accepted', location: 'https://redirect.invalid/accepted' });
   assert.match(vendorResult.lastUrl, /lead%5Btest%5D=false/);
   assert.doesNotMatch(vendorResult.lastUrl, /lead%5Btest%5D=true|unexpected=/);
-  assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), String(graduationYears.maximumYear()));
+  assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '2023');
   const attributionPayload = new URL(vendorResult.lastUrl).searchParams;
   assert.strictEqual(attributionPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(attributionPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
@@ -111,8 +112,20 @@ function adminEvent(body, secret) {
   assert.strictEqual(protectedPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(protectedPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
   assert.strictEqual(protectedPayload.get('subid4'), 'TEST-FBCLID-3333');
-  assert.strictEqual(protectedPayload.get('lead_education[grad_year]'), String(graduationYears.maximumYear()));
+  assert.strictEqual(protectedPayload.get('lead_education[grad_year]'), '2023');
   env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
+
+  global.fetch = vendorResult({ status: 'success' });
+  const minimumYear = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1996' }));
+  assert.strictEqual(minimumYear.statusCode, 200);
+  assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '1996');
+
+  let blockedVendorCalls = 0;
+  global.fetch = async function () { blockedVendorCalls += 1; throw new Error('Invalid graduation year reached vendor'); };
+  for (const invalidYear of ['1995', '2024', '', '2023.0', '2022.5', 'not-a-year']) {
+    assert.strictEqual((await submit(leadEvent('227753', { 'lead_education[grad_year]': invalidYear }))).statusCode, 400);
+  }
+  assert.strictEqual(blockedVendorCalls, 0, 'Invalid graduation year reached LeadHoop');
 
   global.fetch = vendorResult({ status: 'failure', reason: { base: ['Not eligible'] } });
   const generalFailure = await submit(leadEvent('227753'));

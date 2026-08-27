@@ -7,39 +7,19 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
-  const START_YEAR = 1996;
-  const CAMPAIGN_TIME_ZONE = 'America/New_York';
+  const MINIMUM_YEAR = 1996;
+  const MAXIMUM_YEAR = 2023;
 
-  function currentYear(date) {
-    const value = date instanceof Date ? date : new Date();
-    return Number(new Intl.DateTimeFormat('en-US', {
-      timeZone: CAMPAIGN_TIME_ZONE,
-      year: 'numeric'
-    }).format(value));
-  }
-
-  function maximumYear(date) {
-    return currentYear(date) + 1;
-  }
-
-  function options(date) {
-    const years = [];
-    for (let year = maximumYear(date); year >= START_YEAR; year -= 1) years.push(year);
-    return years;
-  }
-
-  function isValid(value, date) {
+  function isValid(value) {
     const normalized = String(value || '').trim();
     if (!/^\d{4}$/.test(normalized)) return false;
     const year = Number(normalized);
-    return year >= START_YEAR && year <= maximumYear(date);
+    return year >= MINIMUM_YEAR && year <= MAXIMUM_YEAR;
   }
 
   return Object.freeze({
-    START_YEAR,
-    currentYear,
-    maximumYear,
-    options,
+    MINIMUM_YEAR,
+    MAXIMUM_YEAR,
     isValid
   });
 });

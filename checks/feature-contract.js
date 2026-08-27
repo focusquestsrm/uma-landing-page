@@ -47,20 +47,21 @@ assert.strictEqual(leadCalls[0][3].eventID, 'event-123');
 assert.strictEqual(metaDocument.appended.filter(function (node) { return /fbevents\.js/.test(node.src); }).length, 1);
 assert(/result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(formSource));
 
+assert.strictEqual(graduationYears.MINIMUM_YEAR, 1996);
+assert.strictEqual(graduationYears.MAXIMUM_YEAR, 2023);
 [
-  ['2026-06-15T12:00:00Z', 2027],
-  ['2027-06-15T12:00:00Z', 2028],
-  ['2028-06-15T12:00:00Z', 2029]
+  ['1995', false],
+  ['1996', true],
+  ['2023', true],
+  ['2024', false],
+  ['', false],
+  ['2023.0', false],
+  ['2022.5', false],
+  ['not-a-year', false]
 ].forEach(function (scenario) {
-  const date = new Date(scenario[0]);
-  const years = graduationYears.options(date);
-  assert.strictEqual(graduationYears.maximumYear(date), scenario[1]);
-  assert.strictEqual(years[0], scenario[1]);
-  assert.strictEqual(years[years.length - 1], 1996);
-  assert(years.every(function (year, index) { return index === 0 || years[index - 1] - year === 1; }));
-  assert(graduationYears.isValid(String(scenario[1]), date));
-  assert(!graduationYears.isValid(String(scenario[1] + 1), date));
+  assert.strictEqual(graduationYears.isValid(scenario[0]), scenario[1], `Unexpected validation for ${scenario[0]}`);
 });
+assert(/if \(!validateStepTwo\(\)\)[\s\S]*updateStep\(2\)/.test(formSource), 'Final submit must revalidate graduation year');
 
 function storage() {
   const values = new Map();
@@ -175,7 +176,10 @@ pages.forEach(function (page) {
   assert(/api\.trustedform\.com\/trustedform\.js/.test(page));
   assert(/create\.lidstatic\.com\/campaign\//.test(page));
   assert(/js\/graduation-years\.js/.test(page));
-  assert(!/<option value="20\d{2}">/.test(page), 'Graduation years must not be hardcoded in HTML');
+  const graduationSelect = page.match(/<select id="lead_education_grad_year"[\s\S]*?<\/select>/);
+  assert(graduationSelect, 'Graduation Year select is missing');
+  const displayedYears = Array.from(graduationSelect[0].matchAll(/<option value="(\d{4})">/g), function (match) { return Number(match[1]); });
+  assert.deepStrictEqual(displayedYears, Array.from({ length: 28 }, function (_, index) { return 2023 - index; }));
   assert(/name="subid2" id="subid2"/.test(page));
   assert(/name="subid3" id="subid3"/.test(page));
   assert(/name="subid4" id="subid4"/.test(page));

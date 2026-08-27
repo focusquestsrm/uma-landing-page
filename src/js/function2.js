@@ -123,18 +123,6 @@
     return false;
   }
 
-  function populateGraduationYears() {
-    const field = document.getElementById('lead_education_grad_year');
-    if (!field || !window.UMA_GRADUATION_YEARS) return;
-    while (field.options.length > 1) field.remove(1);
-    window.UMA_GRADUATION_YEARS.options().forEach(function (year) {
-      const option = document.createElement('option');
-      option.value = String(year);
-      option.textContent = String(year);
-      field.appendChild(option);
-    });
-  }
-
   function validateStepTwo() {
     const checks = [
       ['lead_education_grad_year', 'Please select your graduation year.', 'grad-year-error'],
@@ -222,6 +210,10 @@
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
     if (submissionInProgress || submissionHandled) return;
+    if (!validateStepTwo()) {
+      updateStep(2);
+      return;
+    }
     if (!validateStepThree()) return;
     submissionInProgress = true;
     const button = document.getElementById('submitButton');
@@ -268,7 +260,6 @@
         'uma-' + Date.now() + '-' + Math.random().toString(16).slice(2);
     }
     captureAttribution();
-    populateGraduationYears();
     setAddressValue();
     wireNavigation();
     updateStep(1);
