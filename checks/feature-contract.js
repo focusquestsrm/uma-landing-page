@@ -62,6 +62,7 @@ assert.strictEqual(graduationYears.MAXIMUM_YEAR, 2023);
   assert.strictEqual(graduationYears.isValid(scenario[0]), scenario[1], `Unexpected validation for ${scenario[0]}`);
 });
 assert(/if \(!validateStepTwo\(\)\)[\s\S]*updateStep\(2\)/.test(formSource), 'Final submit must revalidate graduation year');
+assert(/document\.activeElement === addressInput/.test(formSource), 'Address Enter must not submit the form before Google handles selection');
 
 function storage() {
   const values = new Map();
@@ -127,7 +128,12 @@ assert.match(generatedFbc.fields.subid2.value, /^fb\.1\.\d+\.TEST-FBCLID-3333$/)
 assert(generatedFbc.cookie.includes('_fbc='), 'The application must persist its generated _fbc cookie');
 
 function field(value) {
-  return { value: value || '', events: [], dispatchEvent: function (event) { this.events.push(event.type); } };
+  return {
+    value: value || '',
+    events: [],
+    addEventListener: function () {},
+    dispatchEvent: function (event) { this.events.push(event.type); }
+  };
 }
 const fields = {
   lead_address_address_visible: field('Manual address'),

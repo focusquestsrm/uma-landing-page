@@ -209,6 +209,9 @@
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    const visibleStep = form.querySelector('.form-step.is-visible');
+    const addressInput = document.getElementById('lead_address_address_visible');
+    if (visibleStep && visibleStep.dataset.step === '2' && document.activeElement === addressInput) return;
     if (submissionInProgress || submissionHandled) return;
     if (!validateStepTwo()) {
       updateStep(2);
