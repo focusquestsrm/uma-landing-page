@@ -81,7 +81,7 @@ function assert(value, message) { if (!value) throw new Error(message); }
   for (const width of widths) {
     await command(client, 'Emulation.setDeviceMetricsOverride', { width, height: width < 800 ? 1100 : 900, deviceScaleFactor: 1, mobile: width < 600 });
     await command(client, 'Page.navigate', { url: baseUrl + '/' });
-    await waitFor(client, `document.readyState === 'complete' && document.querySelectorAll('[data-program-id]').length === 4`, `Programs did not load at ${width}px`);
+    await waitFor(client, `document.readyState !== 'loading' && document.querySelectorAll('[data-program-id]').length === 4`, `Programs did not load at ${width}px`);
     const before = await evaluate(client, `({ sections: document.querySelectorAll('main > section').length, overflow: document.documentElement.scrollWidth > innerWidth })`);
     await evaluate(client, `document.querySelector('[data-program-id="227753"]').click(); true`);
     await waitFor(client, `document.getElementById('lead_education_program_id').value === '227753'`, 'Program selection was not retained');

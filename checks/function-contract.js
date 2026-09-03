@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const availability = require('../netlify/functions/_shared/program-availability');
+const idempotency = require('../netlify/functions/_shared/submission-idempotency');
 const { classifyLeadHoopResponse } = require('../netlify/functions/_shared/leadhoop-response');
 const graduationYears = require('../src/js/graduation-years');
 const routineLogs = [];
@@ -18,16 +19,33 @@ console.error = function () {
 
 class MemoryStore {
   constructor() {
-    this.records = new Map(); this.getOptions = []; this.failReads = false; this.failWrites = false;
+    this.records = new Map(); this.etags = new Map(); this.sequence = 0;
+    this.getOptions = []; this.failReads = false; this.failWrites = false; this.failProgramWrites = false;
   }
   async get(key, options) {
     if (this.failReads) throw new Error('mock read failure');
     this.getOptions.push(options || {});
     return this.records.has(key) ? JSON.parse(JSON.stringify(this.records.get(key))) : null;
   }
-  async setJSON(key, value) {
-    if (this.failWrites) throw new Error('mock write failure');
+  async getWithMetadata(key, options) {
+    if (this.failReads) throw new Error('mock read failure');
+    this.getOptions.push(options || {});
+    if (!this.records.has(key)) return null;
+    return {
+      data: JSON.parse(JSON.stringify(this.records.get(key))),
+      etag: this.etags.get(key),
+      metadata: {}
+    };
+  }
+  async setJSON(key, value, options) {
+    if (this.failWrites || (this.failProgramWrites && key.startsWith('uma-health:'))) throw new Error('mock write failure');
+    if (options && options.onlyIfNew && this.records.has(key)) return { modified: false };
+    if (options && options.onlyIfMatch && this.etags.get(key) !== options.onlyIfMatch) return { modified: false };
     this.records.set(key, JSON.parse(JSON.stringify(value)));
+    this.sequence += 1;
+    const etag = `etag-${this.sequence}`;
+    this.etags.set(key, etag);
+    return { modified: true, etag };
   }
 }
 
@@ -48,6 +66,7 @@ env(['PROGRAM', 'AVAILABILITY', 'ADMIN', 'SECRET'], 'unit-test-admin-secret');
 
 const store = new MemoryStore();
 availability.setStoreFactoryForTests(function () { return store; });
+idempotency.setStoreFactoryForTests(function () { return store; });
 const submit = require('../netlify/functions/_shared/submit-lead-handler').handler;
 const getPrograms = require('../netlify/functions/_shared/get-program-availability-handler').handler;
 const managePrograms = require('../netlify/functions/_shared/manage-program-availability-handler').handler;
@@ -61,6 +80,7 @@ function leadEvent(programId, overrides) {
     'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
     'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
     'lead[service_leadid]': 'leadid-value', 'lead_consent[tcpa_consent]': 'Y',
+    submission_id: `00000000-0000-4000-8000-${String(eventSequence).padStart(12, '0')}`,
     'lead_education[program_id]': programId,
     'lead_education[grad_year]': '2023',
     subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
@@ -85,6 +105,13 @@ function adminEvent(body, secret) {
 }
 
 (async function () {
+  const retentionStore = new MemoryStore();
+  const retentionId = '11111111-1111-4111-8111-111111111111';
+  const retained = await idempotency.reserveSubmission(retentionStore, retentionId, 'request-one', new Date('2026-09-03T12:00:00Z'));
+  assert.strictEqual(retained.owner, true);
+  assert.strictEqual((await idempotency.reserveSubmission(retentionStore, retentionId, 'request-two', new Date('2026-09-04T11:59:59Z'))).owner, false);
+  assert.strictEqual((await idempotency.reserveSubmission(retentionStore, retentionId, 'request-three', new Date('2026-09-04T12:00:01Z'))).owner, true);
+
   const initialized = await availability.readAllPrograms(store, new Date('2026-08-26T12:00:00Z'));
   assert.deepStrictEqual(initialized.map(function (record) { return record.programId; }), ['227753', '227755', '227756', '227754']);
   assert(initialized.every(function (record) { return record.status === 'available' && record.updatedBy === 'initialization'; }));
@@ -102,6 +129,43 @@ function adminEvent(body, secret) {
   assert.strictEqual(attributionPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(attributionPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
   assert.strictEqual(attributionPayload.get('subid4'), 'TEST-FBCLID-3333');
+  assert.strictEqual(attributionPayload.get('submission_id'), null, 'Unapproved submission ID field reached LeadHoop');
+
+  let duplicateVendorCalls = 0;
+  const duplicateEvent = leadEvent('227753');
+  global.fetch = async function () {
+    duplicateVendorCalls += 1;
+    return { ok: true, status: 200, json: async function () { return { status: 'success', lead_id: 'safe-response-1' }; } };
+  };
+  const firstDuplicate = await submit(duplicateEvent);
+  const secondDuplicate = await submit(duplicateEvent);
+  assert.strictEqual(duplicateVendorCalls, 1, 'Repeated submission ID reached LeadHoop more than once');
+  assert.deepStrictEqual(JSON.parse(secondDuplicate.body), JSON.parse(firstDuplicate.body));
+
+  let releaseConcurrent;
+  let concurrentVendorCalls = 0;
+  const concurrentEvent = leadEvent('227753');
+  global.fetch = async function () {
+    concurrentVendorCalls += 1;
+    await new Promise(function (resolve) { releaseConcurrent = resolve; });
+    return { ok: true, status: 200, json: async function () { return { status: 'success' }; } };
+  };
+  const concurrentFirst = submit(concurrentEvent);
+  while (!releaseConcurrent) await new Promise(function (resolve) { setImmediate(resolve); });
+  const concurrentSecond = await submit(concurrentEvent);
+  assert.strictEqual(concurrentSecond.statusCode, 202);
+  releaseConcurrent();
+  await concurrentFirst;
+  assert.strictEqual(concurrentVendorCalls, 1, 'Concurrent submission IDs reached LeadHoop more than once');
+
+  let distinctVendorCalls = 0;
+  global.fetch = async function () {
+    distinctVendorCalls += 1;
+    return { ok: true, status: 200, json: async function () { return { status: 'success' }; } };
+  };
+  await submit(leadEvent('227753'));
+  await submit(leadEvent('227753'));
+  assert.strictEqual(distinctVendorCalls, 2, 'Distinct submission IDs did not create legitimate leads');
 
   env(['LEADHOOP', 'FIXED', 'FIELDS'], JSON.stringify({
     subid2: 'must-not-overwrite-fbc', subid3: 'must-not-overwrite-fbp', subid4: 'must-not-overwrite-fbclid',
@@ -128,6 +192,8 @@ function adminEvent(body, secret) {
     assert.strictEqual((await submit(leadEvent('227753', { 'lead_education[grad_year]': invalidYear }))).statusCode, 400);
   }
   assert.strictEqual(blockedVendorCalls, 0, 'Invalid graduation year reached LeadHoop');
+  assert.strictEqual((await submit(leadEvent('227753', { submission_id: 'invalid id' }))).statusCode, 400);
+  assert.strictEqual(blockedVendorCalls, 0, 'Invalid submission ID reached LeadHoop');
 
   global.fetch = vendorResult({ status: 'failure', reason: { base: ['Not eligible'] } });
   const generalFailure = await submit(leadEvent('227753'));
@@ -166,16 +232,22 @@ function adminEvent(body, secret) {
   await availability.updateProgram(store, '227753', 'available', { updatedBy: 'authorized_admin' });
   global.fetch = vendorResult({ unexpected: true });
   assert.strictEqual((await submit(leadEvent('227753'))).statusCode, 502);
-  global.fetch = async function () { throw new Error('mock timeout'); };
-  assert.strictEqual((await submit(leadEvent('227753'))).statusCode, 502);
+  let timeoutVendorCalls = 0;
+  const timeoutEvent = leadEvent('227753');
+  global.fetch = async function () { timeoutVendorCalls += 1; throw new Error('mock timeout'); };
+  const timeoutResponse = await submit(timeoutEvent);
+  assert.strictEqual(timeoutResponse.statusCode, 502);
+  assert.strictEqual(JSON.parse(timeoutResponse.body).retryable, false);
+  assert.strictEqual((await submit(timeoutEvent)).statusCode, 502);
+  assert.strictEqual(timeoutVendorCalls, 1, 'Ambiguous timeout was posted to LeadHoop again');
 
   store.failReads = true;
   assert.strictEqual((await submit(leadEvent('227753'))).statusCode, 503);
   store.failReads = false;
   global.fetch = vendorResult({ status: 'failure', reason: { base: ['Reached the monthly offer cap for program'] } });
-  store.failWrites = true;
-  assert.strictEqual((await submit(leadEvent('227753'))).statusCode, 502);
-  store.failWrites = false;
+  store.failProgramWrites = true;
+  assert.strictEqual((await submit(leadEvent('227753'))).statusCode, 200);
+  store.failProgramWrites = false;
 
   await availability.updateProgram(store, '227754', 'capped', {
     updatedBy: 'authorized_admin', reasonCategory: 'monthly_offer_cap', effectiveMonth: '2026-07', now: new Date('2026-07-01T12:00:00Z')

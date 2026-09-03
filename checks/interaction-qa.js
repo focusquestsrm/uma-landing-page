@@ -62,7 +62,7 @@ async function waitFor(client, expression, message) {
 
 async function navigate(client, url) {
   await command(client, 'Page.navigate', { url });
-  await waitFor(client, `document.readyState === 'complete'`, `Page did not load: ${url}`);
+  await waitFor(client, `document.readyState !== 'loading'`, `Page did not load: ${url}`);
 }
 
 function assert(value, message) {
@@ -146,7 +146,7 @@ function assert(value, message) {
     await navigate(client, baseUrl + '/programs/connect/form-update-health.html');
     await waitFor(client, `document.querySelectorAll('#lead_education_program_id option').length === 5`, 'Direct form route did not hydrate');
     await command(client, 'Page.reload');
-    await waitFor(client, `document.readyState === 'complete' && document.querySelectorAll('#lead_education_program_id option').length === 5`, 'Direct form refresh failed');
+    await waitFor(client, `document.readyState !== 'loading' && document.querySelectorAll('#lead_education_program_id option').length === 5`, 'Direct form refresh failed');
     const direct = await evaluate(client, `({ path: location.pathname, step: document.querySelector('.form-step.is-visible').dataset.step, overflow: document.documentElement.scrollWidth > innerWidth })`);
     assert(direct.path.endsWith('/programs/connect/form-update-health.html') && direct.step === '1' && !direct.overflow, `Direct form route failed at ${width}px`);
 

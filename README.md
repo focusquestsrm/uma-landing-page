@@ -9,6 +9,7 @@ Standalone production-ready landing page for the approved Fallon UMA experience.
 - The build validates that CSV and writes `src/data/uma-kayla-programs.json` for the browser and server function.
 - `netlify/functions/submit-lead.mjs` is the only lead-submission entry point; protected logic is held in the shared server bundle.
 - Netlify Blobs store `uma-program-availability` holds non-PII runtime status separately from the CSV.
+- Netlify Blobs store `uma-lead-idempotency` atomically retains privacy-safe submission outcomes for 24 hours so concurrent requests and ambiguous retries cannot create another LeadHoop post.
 - The visitor, protected management, and scheduled reset functions read/write only validated `uma-health:<program-id>` records.
 - `netlify.toml` publishes `src` and deploys the server function.
 - The landing page contains the complete three-step inquiry form. Program cards select the exact configured program and scroll to that form without navigating away.
@@ -35,7 +36,7 @@ Run `npm run build` after editing. The build stops on missing files, empty data,
 
 No application-level rate limiter is included because an in-memory counter is not reliable across serverless instances. Configure traffic controls at the Netlify edge if they become necessary.
 
-Accepted and business-failed outcomes use separate server-side redirect variables even when both currently point to the same destination. Technical failures remain retryable and do not redirect as accepted.
+Accepted and business-failed outcomes use separate server-side redirect variables even when both currently point to the same destination. A failure before any LeadHoop request is retryable with the same submission ID. Once an outbound request begins, an ambiguous failure is retained and is not retried automatically or presented as accepted. Pending submission state is retained in session storage without consumer data so an accidental refresh remains locked during the 24-hour deduplication window.
 
 ## Program availability operations
 

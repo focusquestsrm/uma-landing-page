@@ -43,7 +43,7 @@ function command(client, method, params) {
 async function waitForLoad(client) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const state = await command(client, 'Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
-    if (state.result.value === 'complete') return;
+    if (state.result.value !== 'loading') return;
     await new Promise(function (resolve) { setTimeout(resolve, 100); });
   }
   throw new Error('Page load timed out');

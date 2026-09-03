@@ -63,6 +63,12 @@ assert.strictEqual(graduationYears.MAXIMUM_YEAR, 2023);
 });
 assert(/if \(!validateStepTwo\(\)\)[\s\S]*updateStep\(2\)/.test(formSource), 'Final submit must revalidate graduation year');
 assert(/document\.activeElement === addressInput/.test(formSource), 'Address Enter must not submit the form before Google handles selection');
+assert.strictEqual((formSource.match(/form\.addEventListener\('submit'/g) || []).length, 1, 'Form must have one authoritative submit handler');
+assert(/submissionHandlerBound/.test(formSource), 'Repeated script initialization must not register another submit handler');
+assert(/submissionInProgress \|\| submissionHandled/.test(formSource), 'Pending submissions must ignore repeated browser events');
+assert(/umaLeadSubmissionState/.test(formSource), 'Pending submission ID and state must survive a refresh');
+assert(/Your request is being processed\. Please do not submit it again\./.test(formSource), 'Ambiguous failures must not invite another submission');
+assert(/result\.retryable === true[\s\S]*genericError/.test(formSource), 'Retry wording must be limited to a confirmed pre-outbound failure');
 
 function storage() {
   const values = new Map();
@@ -79,6 +85,7 @@ function runAttribution(cookie, search) {
     lead_education_program_id: Object.assign(field(), { disabled: false, addEventListener: function () {}, focus: function () {} })
   };
   const leadForm = {
+    dataset: {},
     addEventListener: function () {},
     querySelectorAll: function () { return []; },
     querySelector: function () { return null; }
@@ -191,6 +198,7 @@ pages.forEach(function (page) {
   assert(/name="subid2" id="subid2"/.test(page));
   assert(/name="subid3" id="subid3"/.test(page));
   assert(/name="subid4" id="subid4"/.test(page));
+  assert(/name="submission_id" id="submission_id"/.test(page));
 });
 
 assert(!/tcpa-check|consent-error|confirm the disclosure/i.test(formSource), 'TCPA checkbox validation remains in the form logic');
