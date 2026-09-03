@@ -9,6 +9,24 @@
 [functions."reset-program-availability"]
   schedule = "15 7 * * *"
 
+# Serve the existing site under /uma without changing its root deployment.
+# The splat rewrite maps nested pages and relative assets back to their
+# existing publish paths; Netlify Functions remain at /.netlify/functions/*.
+[[redirects]]
+  from = "/uma"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/uma/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/uma/*"
+  to = "/:splat"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
