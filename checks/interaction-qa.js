@@ -122,7 +122,6 @@ function assert(value, message) {
         set('lead_lastname', 'Review');
         set('lead_email', 'browser.review@example.invalid');
         set('lead_phone1', '2125550100');
-        document.getElementById('tcpa-check').checked = true;
         const body = new URLSearchParams(new FormData(document.getElementById('leadform')));
         return {
           path: location.pathname,
@@ -130,12 +129,16 @@ function assert(value, message) {
           visibleSections: Array.from(document.querySelectorAll('main > section')).filter(function (section) { const style = getComputedStyle(section); return style.display !== 'none' && style.visibility !== 'hidden'; }).length,
           step: document.querySelector('.form-step.is-visible').dataset.step,
           selected: body.get('lead_education[program_id]'),
+          tcpaConsent: body.get('lead_consent[tcpa_consent]'),
+          tcpaCheckboxes: document.querySelectorAll('#tcpa-check, input[type="checkbox"]').length,
+          disclosureDescribedBy: document.getElementById('submitButton').getAttribute('aria-describedby'),
           submitType: document.getElementById('submitButton').type,
           overflow: document.documentElement.scrollWidth > innerWidth
         };
       })()`);
       assert(finalState.path === '/' && finalState.sectionCount === 4 && finalState.visibleSections === 4, `Form steps removed landing content for ${expectedProgram} at ${width}px`);
       assert(finalState.step === '3' && finalState.selected === expectedProgram, `Submission state lost program ${expectedProgram} at ${width}px`);
+      assert(finalState.tcpaConsent === 'Y' && finalState.tcpaCheckboxes === 0 && finalState.disclosureDescribedBy === 'tcpa-disclosure', `TCPA consent state is invalid for ${expectedProgram} at ${width}px`);
       assert(finalState.submitType === 'submit' && !finalState.overflow, `Final form controls or layout are invalid at ${width}px`);
       programs.push({ id: expectedProgram, afterCard, finalState });
     }

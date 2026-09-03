@@ -60,7 +60,8 @@ function leadEvent(programId, overrides) {
     'lead[email]': `unit-${eventSequence}@example.invalid`,
     'lead[phone1]': `212555${String(1000 + eventSequence).slice(-4)}`,
     'lead[test]': 'true', 'lead[service_trusted_form]': 'certificate-value',
-    'lead[service_leadid]': 'leadid-value', 'lead_education[program_id]': programId,
+    'lead[service_leadid]': 'leadid-value', 'lead_consent[tcpa_consent]': 'Y',
+    'lead_education[program_id]': programId,
     'lead_education[grad_year]': '2023',
     subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
     unexpected: 'must-not-pass'
@@ -97,6 +98,7 @@ function adminEvent(body, secret) {
   assert.doesNotMatch(vendorResult.lastUrl, /lead%5Btest%5D=true|unexpected=/);
   assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '2023');
   const attributionPayload = new URL(vendorResult.lastUrl).searchParams;
+  assert.strictEqual(attributionPayload.get('lead_consent[tcpa_consent]'), 'Y');
   assert.strictEqual(attributionPayload.get('subid2'), 'fb.1.1111111111.TESTFBC');
   assert.strictEqual(attributionPayload.get('subid3'), 'fb.1.2222222222.TESTFBP');
   assert.strictEqual(attributionPayload.get('subid4'), 'TEST-FBCLID-3333');

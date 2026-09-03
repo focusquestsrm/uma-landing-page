@@ -177,7 +177,9 @@ assert.strictEqual(fields.lead_address_address_visible.value, populated, 'Places
 pages.forEach(function (page) {
   const text = page.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   assert(text.includes(disclosure), 'The exact TCPA disclosure is missing');
-  assert(/id="tcpa-check"[^>]*type="checkbox"[^>]*required/.test(page));
+  assert(/<p id="tcpa-disclosure" class="tcpa-disclosure mb-0"/.test(page), 'The TCPA disclosure must be ordinary text');
+  assert(!/tcpa-check|consent-error/.test(page), 'TCPA checkbox UI or error state remains');
+  assert(/id="submitButton"[^>]*aria-describedby="tcpa-disclosure"/.test(page), 'Request Info must reference the disclosure');
   assert(/name="lead_consent\[tcpa_consent\]"[^>]*value="Y"/.test(page));
   assert(/api\.trustedform\.com\/trustedform\.js/.test(page));
   assert(/create\.lidstatic\.com\/campaign\//.test(page));
@@ -190,5 +192,7 @@ pages.forEach(function (page) {
   assert(/name="subid3" id="subid3"/.test(page));
   assert(/name="subid4" id="subid4"/.test(page));
 });
+
+assert(!/tcpa-check|consent-error|confirm the disclosure/i.test(formSource), 'TCPA checkbox validation remains in the form logic');
 
 console.log('Meta, Google Places fallback, TCPA, and compliance feature contracts passed.');
