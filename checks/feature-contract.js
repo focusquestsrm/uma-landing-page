@@ -183,8 +183,11 @@ assert.strictEqual(fields.lead_address_address_visible.value, populated, 'Places
 
 pages.forEach(function (page) {
   const text = page.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const disclosureLabel = page.match(/<label for="leadid_tcpa_disclosure" id="tcpa-disclosure" class="tcpa-disclosure mb-0"[^>]*>([\s\S]*?)<\/label>/);
   assert(text.includes(disclosure), 'The exact TCPA disclosure is missing');
-  assert(/<p id="tcpa-disclosure" class="tcpa-disclosure mb-0"/.test(page), 'The TCPA disclosure must be ordinary text');
+  assert(/<input type="hidden" id="leadid_tcpa_disclosure" name="lead_consent\[tcpa_consent\]" value="Y" data-leadid-type="disclosure" \/>/.test(page), 'The Jornaya disclosure input must use the documented data-leadid-type attribute');
+  assert(disclosureLabel, 'The complete TCPA disclosure must use a label explicitly associated with the Jornaya disclosure input');
+  assert.strictEqual(disclosureLabel[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), disclosure, 'The Jornaya label must identify the complete approved disclosure');
   assert(!/tcpa-check|consent-error/.test(page), 'TCPA checkbox UI or error state remains');
   assert(/id="submitButton"[^>]*aria-describedby="tcpa-disclosure"/.test(page), 'Request Info must reference the disclosure');
   assert(/name="lead_consent\[tcpa_consent\]"[^>]*value="Y"/.test(page));
