@@ -83,6 +83,7 @@ function leadEvent(programId, overrides) {
     submission_id: `00000000-0000-4000-8000-${String(eventSequence).padStart(12, '0')}`,
     'lead_education[program_id]': programId,
     'lead_education[grad_year]': '2023',
+    'lead_education[education_level_id]': '2332',
     subid2: 'fb.1.1111111111.TESTFBC', subid3: 'fb.1.2222222222.TESTFBP', subid4: 'TEST-FBCLID-3333',
     unexpected: 'must-not-pass'
   }, overrides || {});
@@ -116,6 +117,56 @@ function adminEvent(body, secret) {
   assert.deepStrictEqual(initialized.map(function (record) { return record.programId; }), ['227753', '227755', '227756', '227754']);
   assert(initialized.every(function (record) { return record.status === 'available' && record.updatedBy === 'initialization'; }));
   assert(store.getOptions.every(function (options) { return options.consistency === 'strong'; }));
+
+  const educationField = 'lead_education[education_level_id]';
+  const invalidEducation = ['', '2330', '2335', '2336', '2337', '9999', 'GED', 'null', 'undefined',
+    ' 2332', '2332 ', '2332.0', '2.332e3', '02332', '2332,2333', '2332\u0000', '2332' + 'x'.repeat(600)];
+  let educationVendorCalls = 0;
+  global.fetch = async function () { educationVendorCalls += 1; throw new Error('Invalid education reached vendor'); };
+  const educationLogsStart = routineLogs.length;
+  const educationCases = invalidEducation.map(function (value) { return leadEvent('227753', { [educationField]: value }); });
+  const missingEducation = leadEvent('227753');
+  const missingBody = new URLSearchParams(missingEducation.body);
+  missingBody.delete(educationField);
+  missingEducation.body = missingBody.toString();
+  educationCases.push(missingEducation);
+  for (const pair of [['2332', '2335'], ['2335', '2332'], ['2332', '2332'], ['2330', '2331']]) {
+    const duplicate = leadEvent('227753', { [educationField]: pair[0] });
+    duplicate.body += '&' + new URLSearchParams({ [educationField]: pair[1] });
+    educationCases.push(duplicate);
+  }
+  const recordsBeforeEducation = store.records.size;
+  for (const event of educationCases) {
+    const result = await submit(event);
+    assert.strictEqual(result.statusCode, 400);
+    const response = JSON.parse(result.body);
+    assert.strictEqual(response.outcome, 'validation_error');
+    assert.strictEqual(response.field, 'education');
+    assert.strictEqual(response.retryable, true);
+    assert.doesNotMatch(response.message, /233\d|9999/);
+    assert.strictEqual(educationVendorCalls, 0);
+  }
+  assert.strictEqual(store.records.size, recordsBeforeEducation, 'Invalid education reserved or changed a record');
+  const educationLogs = routineLogs.slice(educationLogsStart).map(JSON.parse);
+  assert.strictEqual(educationLogs.length, educationCases.length);
+  educationLogs.forEach(function (entry) {
+    assert.deepStrictEqual(entry, { event: 'education_validation_rejected', outboundRequests: 0 });
+  });
+  // A fixed field must neither rescue an invalid selection nor replace a valid one.
+  env(['LEADHOOP', 'FIXED', 'FIELDS'], JSON.stringify({ [educationField]: '2332' }));
+  assert.strictEqual((await submit(leadEvent('227753', { [educationField]: '2335' }))).statusCode, 400);
+  assert.strictEqual(educationVendorCalls, 0);
+  for (const fixedValue of ['2330', '2335', '2336', '2334']) {
+    env(['LEADHOOP', 'FIXED', 'FIELDS'], JSON.stringify({ [educationField]: fixedValue }));
+    for (const option of require('../src/js/education-levels').options.filter(function (option) { return option[0] !== '2330'; })) {
+      global.fetch = vendorResult({ status: 'success' });
+      const result = await submit(leadEvent('227753', { [educationField]: option[0] }));
+      assert.strictEqual(result.statusCode, 200, option[1]);
+      assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get(educationField), option[0], option[1]);
+    }
+  }
+  env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
+  console.log(JSON.stringify({ education: { invalidCases: educationCases.length + 1, outboundRequests: educationVendorCalls, validLabelOverrideCases: 36 } }));
 
   global.fetch = vendorResult({ status: 'success' });
   const accepted = await submit(leadEvent('227753'));

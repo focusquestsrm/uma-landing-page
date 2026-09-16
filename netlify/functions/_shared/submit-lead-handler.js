@@ -2,6 +2,8 @@
 
 const { classifyLeadHoopResponse } = require('./leadhoop-response');
 const graduationYears = require('../../../src/js/graduation-years');
+const educationLevels = require('../../../src/js/education-levels');
+const EDUCATION_FIELD = 'lead_education[education_level_id]';
 const {
   completeSubmission,
   getSubmissionStore,
@@ -153,7 +155,7 @@ function makePayload(event, config) {
   if (!PROGRAMS.has(programId) || !graduationYears.isValid(outbound.get(GRADUATION_YEAR_FIELD))) return null;
 
   Object.entries(config.fixedFields).forEach(function (entry) {
-    if (!META_ATTRIBUTION_FIELDS.has(entry[0]) && entry[0] !== GRADUATION_YEAR_FIELD) outbound.set(entry[0], clean(entry[1], 500));
+    if (!META_ATTRIBUTION_FIELDS.has(entry[0]) && entry[0] !== GRADUATION_YEAR_FIELD && entry[0] !== EDUCATION_FIELD) outbound.set(entry[0], clean(entry[1], 500));
   });
   outbound.set('lead[media_type]', 'noncallcenter');
   outbound.set('lead[test]', config.validationFlag ? 'true' : 'false');
@@ -193,6 +195,16 @@ exports.handler = async function (event) {
     return reply(503, { outcome: 'unavailable', retryable: true });
   }
 
+  const educationValues = new URLSearchParams(event.body || '').getAll(EDUCATION_FIELD);
+  function rejectEducation() {
+    console.info(JSON.stringify({ event: 'education_validation_rejected', outboundRequests: 0 }));
+    return reply(400, {
+      outcome: 'validation_error', field: 'education', retryable: true,
+      message: educationLevels.message(educationValues.length === 1 ? educationValues[0] : '')
+    });
+  }
+  // Validate raw input before normalization, storage, or any vendor request.
+  if (educationValues.length !== 1 || !educationLevels.isAccepted(educationValues[0])) return rejectEducation();
   const payload = makePayload(event, config);
   if (!payload) return reply(400, { outcome: 'unavailable', retryable: true });
   const submissionId = new URLSearchParams(event.body || '').get('submission_id');
@@ -239,6 +251,12 @@ exports.handler = async function (event) {
   const controller = new AbortController();
   const timeout = setTimeout(function () { controller.abort(); }, LEADHOOP_TIMEOUT_MS);
   try {
+    // Final boundary guard: configuration must never change the selected education.
+    if (!educationLevels.isAccepted(payload.get(EDUCATION_FIELD)) || payload.get(EDUCATION_FIELD) !== educationValues[0]) {
+      const rejected = rejectEducation();
+      await completeSubmission(submissionStore, reservation, 'completed', JSON.parse(rejected.body));
+      return rejected;
+    }
     console.info(JSON.stringify({ event: 'leadhoop_request', submissionId, functionRequestId, campaignCode: config.campaignCode, outboundRequest: 1 }));
     const vendorResponse = await fetch(config.endpoint + '?' + payload.toString(), {
       method: 'GET',

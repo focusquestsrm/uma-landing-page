@@ -69,6 +69,46 @@ function assert(value, message) {
   if (!value) throw new Error(message);
 }
 
+async function checkEducation(client) {
+  const result = await evaluate(client, `(() => {
+    const select = document.getElementById('lead_education_education_level_id');
+    const form = document.getElementById('leadform');
+    const next = document.querySelector('[data-next-step="3"]');
+    const back = document.querySelector('[data-back-step="2"]');
+    const error = document.getElementById('education-error');
+    const step = () => document.querySelector('.form-step.is-visible').dataset.step;
+    const invalid = ['', '2330', '2335', '2336', '2337', '9999', '2332.0', ' 2332'];
+    for (const value of invalid) {
+      const temporary = !Array.from(select.options).some(option => option.value === value);
+      if (temporary) select.add(new Option('Stale selection', value));
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      next.click();
+      if (step() !== '2' || !error.textContent || /233[0-9]/.test(error.textContent)) throw new Error('Invalid education advanced');
+      if (value === '2330' && !error.textContent.includes('diploma or GED is required')) throw new Error('Missing eligibility message');
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      if (step() !== '2' || select.value !== value) throw new Error('Invalid education was substituted');
+      if (temporary) select.remove(select.options.length - 1);
+    }
+    const labels = [];
+    for (let index = 2; index < select.options.length; index += 1) {
+      select.selectedIndex = index;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      const option = select.options[index];
+      const payload = new URLSearchParams(new FormData(form));
+      if (payload.get('lead_education[education_level_id]') !== option.value || error.textContent) throw new Error('Education serialization failed');
+      next.click();
+      if (step() !== '3') throw new Error('Accepted education did not progress');
+      labels.push(option.textContent);
+      back.click();
+    }
+    select.value = '2332';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return { invalid: invalid.length, accepted: labels.length, overflow: document.documentElement.scrollWidth > innerWidth };
+  })()`);
+  assert(result.invalid === 8 && result.accepted === 9 && !result.overflow, 'Education interaction or layout failed');
+}
+
 (async function () {
   const client = await connect();
   await command(client, 'Page.enable');
@@ -112,9 +152,10 @@ function assert(value, message) {
         set('lead_address_city', 'Tampa');
         set('lead_address_state', 'FL');
         set('lead_address_zip', '33601');
-        document.querySelector('[data-next-step="3"]').click();
         return true;
       })()`);
+      await checkEducation(client);
+      await evaluate(client, `document.querySelector('[data-next-step="3"]').click(); true`);
       await waitFor(client, `document.querySelector('.form-step.is-visible').dataset.step === '3'`, `Program ${expectedProgram} did not advance to step 3`);
       const finalState = await evaluate(client, `(() => {
         const set = function (id, value) { const node = document.getElementById(id); node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); };
@@ -149,6 +190,15 @@ function assert(value, message) {
     await waitFor(client, `document.readyState !== 'loading' && document.querySelectorAll('#lead_education_program_id option').length === 5`, 'Direct form refresh failed');
     const direct = await evaluate(client, `({ path: location.pathname, step: document.querySelector('.form-step.is-visible').dataset.step, overflow: document.documentElement.scrollWidth > innerWidth })`);
     assert(direct.path.endsWith('/programs/connect/form-update-health.html') && direct.step === '1' && !direct.overflow, `Direct form route failed at ${width}px`);
+    await evaluate(client, `(() => {
+      document.getElementById('lead_education_program_id').value = '227753';
+      document.querySelector('[data-next-step="2"]').click();
+      for (const [id, value] of Object.entries({ lead_education_grad_year: '2023', lead_address_address_visible: '123 Main Street', lead_address_city: 'Tampa', lead_address_state: 'FL', lead_address_zip: '33601' })) {
+        const node = document.getElementById(id); node.value = value; node.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return true;
+    })()`);
+    await checkEducation(client);
 
     await navigate(client, baseUrl + '/');
     await waitFor(client, `document.querySelectorAll('[data-program-id]').length === 4`, 'Landing refresh did not hydrate');

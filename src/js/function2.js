@@ -176,10 +176,20 @@
     return false;
   }
 
+  function validateEducation() {
+    const field = document.getElementById('lead_education_education_level_id');
+    const value = field ? field.value : '';
+    const levels = window.UMA_EDUCATION_LEVELS;
+    const valid = Boolean(levels && levels.isAccepted(value));
+    setError('education-error', valid ? '' : levels ? levels.message(value) : 'Please select a valid education level.');
+    if (!valid && field) field.focus();
+    return valid;
+  }
+
   function validateStepTwo() {
+    if (!validateEducation()) return false;
     const checks = [
       ['lead_education_grad_year', 'Please select your graduation year.', 'grad-year-error'],
-      ['lead_education_education_level_id', 'Please select your highest level of education.', 'education-error'],
       ['lead_address_address_visible', 'Please enter your street address.', 'addressValidationMessage'],
       ['lead_address_city', 'Please enter your city.', null],
       ['lead_address_state', 'Please select your state.', null],
@@ -296,6 +306,18 @@
         window.setTimeout(function () { window.location.assign(result.location); }, 3000);
         return;
       }
+      if (result.outcome === 'validation_error' && result.field === 'education' && result.retryable === true) {
+        submissionInProgress = false;
+        persistSubmissionState('retryable');
+        updateStep(2);
+        const educationField = document.getElementById('lead_education_education_level_id');
+        const value = educationField ? educationField.value : '';
+        setError('education-error', window.UMA_EDUCATION_LEVELS ? window.UMA_EDUCATION_LEVELS.message(value) : 'Please select a valid education level.');
+        if (educationField) educationField.focus();
+        button.disabled = false;
+        button.textContent = 'Request Info';
+        return;
+      }
       if (result.retryable === true) {
         submissionInProgress = false;
         persistSubmissionState('retryable');
@@ -313,6 +335,8 @@
   });
 
   async function initialize() {
+    const educationField = document.getElementById('lead_education_education_level_id');
+    if (educationField) educationField.addEventListener('change', validateEducation);
     const phone = document.getElementById('lead_phone1');
     if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
     const eventField = document.getElementById('meta_event_id');

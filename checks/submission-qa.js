@@ -29,7 +29,7 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
   function field(id, name, value) {
     const node = {
       id, name, value: value || '', disabled: false, textContent: '', classList: classList(),
-      addEventListener: function () {}, dispatchEvent: function () {}, focus: function () {}
+      addEventListener: function (type, listener) { this['on' + type] = listener; }, dispatchEvent: function () {}, focus: function () {}
     };
     fields[id] = node;
     return node;
@@ -49,6 +49,7 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
   field('meta_event_id', 'meta_event_id', 'meta-event-safe');
   field('submission_id', 'submission_id', '');
   field('status-message', '', '');
+  field('education-error', '', '');
   const button = field('submitButton', '', '');
   button.textContent = 'Request Info';
   Object.assign(fields, overrides || {});
@@ -88,6 +89,7 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
     fetch: fetchImplementation,
     setTimeout: function (callback) { callback(); },
     UMA_GRADUATION_YEARS: { isValid: function (value) { return value === '2023'; } },
+    UMA_EDUCATION_LEVELS: require('../src/js/education-levels'),
     UMA_PROGRAM_AVAILABILITY: {
       loadPrograms: async function () { return [{ program_id: '227753' }]; },
       populateSelect: function () {}, renderCards: function () {}
@@ -108,6 +110,37 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
 }
 
 (async function () {
+  let educationRequests = 0;
+  const educationSession = storage();
+  educationSession.setItem('lead_education[education_level_id]', '2336');
+  educationSession.setItem('educationLevel', '2335');
+  const education = await harness(async function (url, options) {
+    educationRequests += 1;
+    assert.strictEqual(new URLSearchParams(options.body).get('lead_education[education_level_id]'), education.fields.lead_education_education_level_id.value);
+    return { ok: false, json: async function () { return { outcome: 'validation_error', field: 'education', retryable: true }; } };
+  }, null, educationSession);
+  assert.strictEqual(education.fields.lead_education_education_level_id.value, '2332', 'Untrusted storage changed the selected qualification');
+  const rejected = ['', '2330', '2335', '2336', '2337', '9999', ' 2332', '2332 ', '2332.0', 'GED', '2332,2333'];
+  for (const value of rejected) {
+    education.fields.lead_education_education_level_id.value = value;
+    education.fields.lead_education_education_level_id.onchange();
+    await education.submit();
+    assert.strictEqual(educationRequests, 0, 'Invalid or restored education reached the server');
+    assert.strictEqual(education.fields.lead_education_education_level_id.value, value, 'Invalid education was substituted');
+    assert.match(education.fields['education-error'].textContent, value === '2330' ? /diploma or GED is required/ : /select a valid education level/);
+    assert.doesNotMatch(education.fields['education-error'].textContent, /233\d|9999/);
+    assert.strictEqual(education.button.disabled, false);
+  }
+  for (const option of require('../src/js/education-levels').options.filter(function (option) { return option[0] !== '2330'; })) {
+    education.fields.lead_education_education_level_id.value = option[0];
+    education.fields.lead_education_education_level_id.onchange();
+    assert.strictEqual(education.fields['education-error'].textContent, '');
+    await education.submit();
+    assert.strictEqual(education.button.disabled, false, 'Server validation response locked correction');
+    assert.match(education.fields['education-error'].textContent, /select a valid education level/);
+  }
+  assert.strictEqual(educationRequests, 9, 'Every accepted label should permit submission');
+  console.log(JSON.stringify({ educationBrowser: { invalidCases: rejected.length, invalidRequests: 0, acceptedLabels: educationRequests, serverValidationRecoverable: true } }));
   let release;
   let requests = 0;
   const bodies = [];

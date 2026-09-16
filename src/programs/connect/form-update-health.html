@@ -137,13 +137,16 @@
                       <label for="lead_education_education_level_id" class="form-label">Highest Level of Education*</label>
                       <select id="lead_education_education_level_id" name="lead_education[education_level_id]" class="form-select" required>
                         <option selected disabled value="">Please Select</option>
+                        <option value="2330">No High School Diploma</option>
                         <option value="2331">GED</option>
-                        <option value="2332">High School Graduate</option>
-                        <option value="2333">Some College</option>
-                        <option value="2334">Associate's Degree</option>
-                        <option value="2335">Bachelor's Degree</option>
-                        <option value="2336">Master's Degree</option>
-                        <option value="2337">Doctoral Degree</option>
+                        <option value="2332">High School Diploma</option>
+                        <option value="2333">Some College (1–29 credits)</option>
+                        <option value="2333">Some College (30–59 credits)</option>
+                        <option value="2333">Some College (60+ credits)</option>
+                        <option value="2334">Associates Degree</option>
+                        <option value="2334">Bachelors Degree</option>
+                        <option value="2334">Masters Degree</option>
+                        <option value="2334">Doctorates/PhD</option>
                       </select>
                       <span class="error-message" id="education-error" aria-live="polite"></span>
                     </div>
@@ -349,6 +352,7 @@
     <script src="../../js/meta-pixel.js"></script>
     <script src="../../js/program-availability.js"></script>
     <script src="../../js/graduation-years.js"></script>
+    <script src="../../js/education-levels.js"></script>
     <script src="../../js/function2.js"></script>
     <script src="../../js/google-places.js"></script>
     <script>
