@@ -3,6 +3,7 @@
 const { classifyLeadHoopResponse } = require('./leadhoop-response');
 const graduationYears = require('../../../src/js/graduation-years');
 const educationLevels = require('../../../src/js/education-levels');
+const phone = require('../../../src/js/phone');
 const EDUCATION_FIELD = 'lead_education[education_level_id]';
 const {
   completeSubmission,
@@ -205,8 +206,15 @@ exports.handler = async function (event) {
   }
   // Validate raw input before normalization, storage, or any vendor request.
   if (educationValues.length !== 1 || !educationLevels.isAccepted(educationValues[0])) return rejectEducation();
+  const phoneValues = new URLSearchParams(event.body || '').getAll('lead[phone1]');
+  const normalizedPhone = phoneValues.length === 1 ? phone.normalize(phoneValues[0]) : null;
+  if (!normalizedPhone) {
+    console.info(JSON.stringify({ event: 'phone_validation_rejected', outboundRequests: 0 }));
+    return reply(400, { outcome: 'validation_error', field: 'phone', retryable: false, message: phone.MESSAGE });
+  }
   const payload = makePayload(event, config);
   if (!payload) return reply(400, { outcome: 'unavailable', retryable: true });
+  payload.set('lead[phone1]', normalizedPhone);
   const submissionId = new URLSearchParams(event.body || '').get('submission_id');
   if (!validSubmissionId(submissionId)) return reply(400, { outcome: 'unavailable', retryable: true });
   const functionRequestId = requestIdentifier(event);

@@ -168,6 +168,39 @@ function adminEvent(body, secret) {
   env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
   console.log(JSON.stringify({ education: { invalidCases: educationCases.length + 1, outboundRequests: educationVendorCalls, validLabelOverrideCases: 36 } }));
 
+  const phoneAccepted = ['5551234567', '15551234567', '+1 (555) 123-4567', '(555) 123-4567', '555-123-4567', '555 123 4567'];
+  const phoneInvalid = ['', '   ', '555123456', '555123456789', '25551234567', '555123456a', '555-123-4567 ext 12',
+    '555-123-4567x12', '555#123#4567', '+5551234567', '115551234567', '1555123456', '1-1555-123-456', '++15551234567'];
+  for (const value of phoneAccepted) {
+    global.fetch = vendorResult({ status: 'success' });
+    const result = await submit(leadEvent('227753', { 'lead[phone1]': value }));
+    assert.strictEqual(result.statusCode, 200, value);
+    assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead[phone1]'), '5551234567', value);
+  }
+  let phoneVendorCalls = 0;
+  global.fetch = async function () { phoneVendorCalls += 1; throw new Error('Invalid phone reached vendor'); };
+  const phoneRecords = store.records.size;
+  const phoneCases = phoneInvalid.map(function (value) { return leadEvent('227753', { 'lead[phone1]': value }); });
+  const noPhone = leadEvent('227753');
+  const noPhoneBody = new URLSearchParams(noPhone.body);
+  noPhoneBody.delete('lead[phone1]');
+  noPhone.body = noPhoneBody.toString();
+  phoneCases.push(noPhone);
+  const repeatedPhone = leadEvent('227753');
+  repeatedPhone.body += '&' + new URLSearchParams({ 'lead[phone1]': '5551234567' });
+  phoneCases.push(repeatedPhone);
+  for (const event of phoneCases) {
+    const result = await submit(event);
+    assert.strictEqual(result.statusCode, 400);
+    const response = JSON.parse(result.body);
+    assert.strictEqual(response.outcome, 'validation_error');
+    assert.strictEqual(response.field, 'phone');
+    assert.strictEqual(response.message, 'Phone number is not valid');
+  }
+  assert.strictEqual(phoneVendorCalls, 0, 'Invalid phone reached LeadHoop');
+  assert.strictEqual(store.records.size, phoneRecords, 'Invalid phone reserved a submission');
+  console.log(JSON.stringify({ phone: { accepted: phoneAccepted.length, invalidCases: phoneCases.length, outboundRequests: phoneVendorCalls } }));
+
   global.fetch = vendorResult({ status: 'success' });
   const accepted = await submit(leadEvent('227753'));
   assert.strictEqual(accepted.statusCode, 200);

@@ -194,6 +194,9 @@ pages.forEach(function (page) {
   assert(/api\.trustedform\.com\/trustedform\.js/.test(page));
   assert(/create\.lidstatic\.com\/campaign\//.test(page));
   assert(/js\/graduation-years\.js/.test(page));
+  assert(page.indexOf('js/phone.js') > -1 && page.indexOf('js/phone.js') < page.indexOf('js/function2.js'), 'phone.js must load before function2.js');
+  const phoneInput = page.match(/<input[^>]*id="lead_phone1"[^>]*>/)[0];
+  assert(/type="tel"/.test(phoneInput) && /inputmode="tel"/.test(phoneInput) && !/maxlength|pattern=|minlength/.test(phoneInput), 'Phone input must allow untruncated telephone entry');
   const graduationSelect = page.match(/<select id="lead_education_grad_year"[\s\S]*?<\/select>/);
   assert(graduationSelect, 'Graduation Year select is missing');
   const displayedYears = Array.from(graduationSelect[0].matchAll(/<option value="(\d{4})">/g), function (match) { return Number(match[1]); });

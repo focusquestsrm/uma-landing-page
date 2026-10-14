@@ -11,6 +11,7 @@ const publicFiles = [
   'src/js/function2.js',
   'src/js/program-availability.js',
   'src/js/graduation-years.js',
+  'src/js/phone.js',
   'src/js/google-places.js',
   'src/js/meta-pixel.js',
   'src/js/runtime-config.js'

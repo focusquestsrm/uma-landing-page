@@ -216,7 +216,7 @@
       ['lead_firstname', 'Please enter your first name.', 'first-name-error', function (value) { return value.length >= 2; }],
       ['lead_lastname', 'Please enter your last name.', 'last-name-error', function (value) { return value.length >= 2; }],
       ['lead_email', 'Please enter a valid email address.', 'email-error', function (value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }],
-      ['lead_phone1', 'Please enter a valid 10-digit phone number.', 'phone-error', function (value) { return /^\d{10}$/.test(value.replace(/\D/g, '')); }]
+      ['lead_phone1', window.UMA_PHONE.MESSAGE, 'phone-error', function (value) { return window.UMA_PHONE.normalize(value) !== null; }]
     ];
     for (const check of checks) {
       const field = document.getElementById(check[0]);
@@ -228,6 +228,8 @@
       }
       setError(check[2], '');
     }
+    const phoneField = document.getElementById('lead_phone1');
+    phoneField.value = window.UMA_PHONE.normalize(String(phoneField.value || '').trim());
     return true;
   }
 
@@ -318,6 +320,16 @@
         button.textContent = 'Request Info';
         return;
       }
+      if (result.outcome === 'validation_error' && result.field === 'phone') {
+        submissionInProgress = false;
+        persistSubmissionState('retryable');
+        setError('phone-error', window.UMA_PHONE.MESSAGE);
+        const phoneField = document.getElementById('lead_phone1');
+        if (phoneField) phoneField.focus();
+        button.disabled = false;
+        button.textContent = 'Request Info';
+        return;
+      }
       if (result.retryable === true) {
         submissionInProgress = false;
         persistSubmissionState('retryable');
@@ -337,8 +349,6 @@
   async function initialize() {
     const educationField = document.getElementById('lead_education_education_level_id');
     if (educationField) educationField.addEventListener('change', validateEducation);
-    const phone = document.getElementById('lead_phone1');
-    if (phone) phone.addEventListener('input', function () { phone.value = phone.value.replace(/\D/g, '').slice(0, 10); });
     const eventField = document.getElementById('meta_event_id');
     if (eventField && !eventField.value) {
       eventField.value = window.crypto && typeof window.crypto.randomUUID === 'function' ? window.crypto.randomUUID() :

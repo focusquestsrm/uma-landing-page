@@ -89,6 +89,7 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
     fetch: fetchImplementation,
     setTimeout: function (callback) { callback(); },
     UMA_GRADUATION_YEARS: { isValid: function (value) { return value === '2023'; } },
+    UMA_PHONE: require('../src/js/phone'),
     UMA_EDUCATION_LEVELS: require('../src/js/education-levels'),
     UMA_PROGRAM_AVAILABILITY: {
       loadPrograms: async function () { return [{ program_id: '227753' }]; },
@@ -219,6 +220,47 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
   assert.strictEqual(invalid.assigned[0], 'https://redirect.invalid/failed');
 
   assert.strictEqual(new URLSearchParams(bodies[0]).get('submission_id'), '12345678-1234-4123-8123-123456789abc');
+
+  const accepted = ['5551234567', '15551234567', '+1 (555) 123-4567', '(555) 123-4567', '555-123-4567', '555 123 4567'];
+  const invalidPhones = ['', '   ', '555123456', '555123456789', '25551234567', '555123456a', '555-123-4567 ext 12',
+    '555-123-4567x12', '555#123#4567', '555_123_4567', '+5551234567', '1-1555-123-456', '115551234567', '1555123456', '+25551234567', '++15551234567'];
+  const phoneBodies = [];
+  const phoneForm = await harness(async function (url, options) {
+    phoneBodies.push(options.body);
+    return { ok: true, json: async function () { return { outcome: 'failed', location: 'https://redirect.invalid/failed' }; } };
+  });
+  const phoneField = phoneForm.fields.lead_phone1;
+  assert.strictEqual(phoneField.oninput, undefined, 'Phone input handler must not rewrite or truncate typed or pasted values');
+  for (const value of invalidPhones) {
+    phoneField.value = value;
+    await phoneForm.submit();
+    assert.strictEqual(phoneBodies.length, 0, `Invalid phone reached the endpoint: ${JSON.stringify(value)}`);
+    assert.strictEqual(phoneField.value, value, 'Invalid phone value was altered');
+    assert.strictEqual(phoneForm.button.disabled, false);
+  }
+  for (const value of accepted) {
+    const fresh = await harness(async function (url, options) {
+      phoneBodies.push(options.body);
+      return { ok: true, json: async function () { return { outcome: 'failed', location: 'https://redirect.invalid/failed' }; } };
+    });
+    fresh.fields.lead_phone1.value = value;
+    await fresh.submit();
+    assert.strictEqual(new URLSearchParams(phoneBodies[phoneBodies.length - 1]).get('lead[phone1]'), '5551234567', `Not normalized: ${value}`);
+  }
+  assert.strictEqual(phoneBodies.length, accepted.length);
+  const errorNode = { id: 'phone-error', textContent: '', classList: classList(), addEventListener: function () {} };
+  const messages = await harness(async function () { throw new Error('Invalid phone reached endpoint'); }, { 'phone-error': errorNode });
+  messages.fields.lead_phone1.value = '555123456a';
+  await messages.submit();
+  assert.strictEqual(errorNode.textContent, 'Phone number is not valid');
+  let corrected = 0;
+  const correction = await harness(async function () { corrected += 1; return { ok: true, json: async function () { return { outcome: 'failed', location: 'https://redirect.invalid/failed' }; } }; }, { 'phone-error': errorNode });
+  correction.fields.lead_phone1.value = '+1 (555) 123-4567';
+  await correction.submit();
+  assert.strictEqual(errorNode.textContent, '');
+  assert.strictEqual(corrected, 1);
+  console.log(JSON.stringify({ phoneBrowser: { accepted: accepted.length, invalid: invalidPhones.length, invalidRequests: 0 } }));
+
   console.log(JSON.stringify({
     successful: { browserRequests: requests },
     safeRetry: { browserRequests: retryRequests, submissionIds: 1 },
