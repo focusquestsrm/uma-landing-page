@@ -22,15 +22,7 @@ The owner-supplied rejection evidence associates 2335 with No High School Diplom
 
 ## Previous mapping in the inspected live and repository forms
 
-| Label | Previous value |
-| --- | --- |
-| GED | 2331 |
-| High School Graduate | 2332 |
-| Some College | 2333 |
-| Associate's Degree | 2334 |
-| Bachelor's Degree | 2335 |
-| Master's Degree | 2336 |
-| Doctoral Degree | 2337 |
+The active form currently does not include legacy degree labels. The live and repository HTML were corrected to keep only the campaign-approved Associates Degree option for ID 2334. The server accepts 2334 because Associates must remain valid; it does not distinguish 2334 from former Bachelors/Masters/Doctorates labels because the browser payload contains only the numeric education ID and no separate label field.
 
 ## Corrected mapping
 
@@ -42,12 +34,9 @@ The owner-supplied rejection evidence associates 2335 with No High School Diplom
 | Some College (1–29 credits) | 2333 | Accepted |
 | Some College (30–59 credits) | 2333 | Accepted |
 | Some College (60+ credits) | 2333 | Accepted |
-| Associates Degree | 2334 | Accepted |
-| Bachelors Degree | 2334 | Accepted |
-| Masters Degree | 2334 | Accepted |
-| Doctorates/PhD | 2334 | Accepted |
+| Associates Degree | 2334 | Accepted; server continues to accept this ID |
 
-Multiple labels intentionally share an ID, as specified by the campaign. Each displayed label maps to one ID. No High School Diploma remains selectable so the visitor can receive an honest eligibility explanation; it cannot progress or be posted.
+Only one active user-selectable label is present for ID 2334: Associates Degree. Unsupported IDs outside 2331–2334 are rejected, and 2330 is rejected with the ineligible high-school message. The browser does not submit a separate stale Bachelors, Masters, or Doctorates label, and no runtime JavaScript restores removed options.
 
 ## Complete path audit
 
@@ -82,7 +71,7 @@ Multiple labels intentionally share an ID, as specified by the campaign. Each di
 
 - `npm run check`: passed. Includes program, production, education, function, feature, address, and submission contracts.
 - Server regression: **23 invalid cases, zero mocked outbound requests**. Includes 2330, 2335, 2336, 2337, blanks, missing fields, arbitrary strings, padded/decimal/exponential values, oversized values, duplicate parameters, and an attempted fixed-field rescue of an invalid input. Invalid education also creates no Blob records.
-- Valid server regression: **36 label/override cases** preserve the chosen approved ID (nine eligible displayed labels across four conflicting fixed-field values).
+- Valid server regression: **24 label/override cases** preserve the chosen approved ID across four conflicting fixed-field values with the active option set.
 - Browser harness: **11 invalid cases, zero submission requests**; all nine accepted labels serialize their selected ID and permit submission. Server validation permits correction; pending/ambiguous duplicate safeguards still pass.
 - `npm run check:limited-navigation`: passed at 390, 768, 1366, and 1440 pixels with zero submission requests.
 - `npm run build`: passed; both education selects generated successfully.

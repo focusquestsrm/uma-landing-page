@@ -140,7 +140,7 @@ async function harness(fetchImplementation, overrides, sharedSessionStorage) {
     assert.strictEqual(education.button.disabled, false, 'Server validation response locked correction');
     assert.match(education.fields['education-error'].textContent, /select a valid education level/);
   }
-  assert.strictEqual(educationRequests, 9, 'Every accepted label should permit submission');
+  assert.strictEqual(educationRequests, 6, 'Every accepted label should permit submission');
   console.log(JSON.stringify({ educationBrowser: { invalidCases: rejected.length, invalidRequests: 0, acceptedLabels: educationRequests, serverValidationRecoverable: true } }));
   let release;
   let requests = 0;

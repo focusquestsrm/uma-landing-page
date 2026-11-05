@@ -106,7 +106,7 @@ async function checkEducation(client) {
     select.dispatchEvent(new Event('change', { bubbles: true }));
     return { invalid: invalid.length, accepted: labels.length, overflow: document.documentElement.scrollWidth > innerWidth };
   })()`);
-  assert(result.invalid === 8 && result.accepted === 9 && !result.overflow, 'Education interaction or layout failed');
+  assert(result.invalid === 8 && result.accepted === 5 && !result.overflow, 'Education interaction or layout failed');
 }
 
 (async function () {

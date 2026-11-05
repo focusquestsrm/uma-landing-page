@@ -166,7 +166,7 @@ function adminEvent(body, secret) {
     }
   }
   env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
-  console.log(JSON.stringify({ education: { invalidCases: educationCases.length + 1, outboundRequests: educationVendorCalls, validLabelOverrideCases: 36 } }));
+  console.log(JSON.stringify({ education: { invalidCases: educationCases.length + 1, outboundRequests: educationVendorCalls, validLabelOverrideCases: 24 } }));
 
   const phoneAccepted = ['5551234567', '15551234567', '+1 (555) 123-4567', '(555) 123-4567', '555-123-4567', '555 123 4567'];
   const phoneInvalid = ['', '   ', '555123456', '555123456789', '25551234567', '555123456a', '555-123-4567 ext 12',

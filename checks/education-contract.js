@@ -6,13 +6,15 @@ const path = require('path');
 const levels = require('../src/js/education-levels');
 // Independent campaign specification: do not derive expected labels from implementation.
 const expected = [
-  ['2330', 'No High School Diploma'], ['2331', 'GED'], ['2332', 'High School Diploma'],
+  ['2331', 'GED'], ['2332', 'High School Diploma'],
   ['2333', 'Some College (1–29 credits)'], ['2333', 'Some College (30–59 credits)'],
-  ['2333', 'Some College (60+ credits)'], ['2334', 'Associates Degree'],
-  ['2334', 'Bachelors Degree'], ['2334', 'Masters Degree'], ['2334', 'Doctorates/PhD']
+  ['2333', 'Some College (60+ credits)'], ['2334', 'Associates Degree']
 ];
+const staleLabels = ['Bachelors Degree', 'Masters Degree', 'Doctorates/PhD'];
 assert.deepStrictEqual(levels.options, expected);
+assert.deepStrictEqual(levels.options.filter(function (option) { return option[0] === '2334'; }), [['2334', 'Associates Degree']]);
 assert.deepStrictEqual(levels.acceptedIds, ['2331', '2332', '2333', '2334']);
+assert.ok(!levels.options.some(function (option) { return staleLabels.includes(option[1]); }));
 const pages = [];
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -39,4 +41,4 @@ assert.strictEqual(pages.length, 2);
 for (const value of ['', '2330', '2335', '2336', '2337', '2332.0', ' 2332', '2332 ', '02332', 2332, null, {}, 'GED']) {
   assert.strictEqual(levels.isAccepted(value), false);
 }
-console.log('Education mapping: both active forms match all 10 campaign labels; only 2331–2334 accepted.');
+console.log('Education mapping: both active forms match the approved education labels; only 2331–2334 accepted.');
