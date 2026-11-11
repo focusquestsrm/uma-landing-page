@@ -13,7 +13,7 @@ const graduationYears = require('../src/js/graduation-years');
 const pages = ['src/index.html', 'src/programs/connect/form-update-health.html'].map(function (file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 });
-const disclosure = 'By clicking the Request Info button below, I am providing my eSIGN signature and express written consent for Ultimate Medical Academy (UMA), Back2Learn, and parties calling on its behalf, to call or text me at the number provided above for purposes relating to educational opportunities with UMA, including through the use of automatic telephone dialing technology and pre-recorded messages. I am authorized to consent to receive these communications at the phone number provided. I understand that I am consenting to receive calls and text messages regardless of whether the number provided is on any do not call list, either now or in the future. I acknowledge that my consent is not required to enroll, and I may revoke my consent at any time. I acknowledge that all calls may be recorded.';
+const disclosure = 'By clicking the Request Info button, I understand that Ultimate Medical Academy (UMA), Back2Learn, and parties calling on its behalf, may periodically email, text or call me about products, services, and for marketing purposes at the phone number provided, using automated or non-automated technology and/or a pre-recorded or artificial voice. I understand that consent is optional and not a condition of purchase. I acknowledge that all calls may be recorded. UMA\'s Privacy Policy applies.';
 
 function makeDocument(fields) {
   const appended = [];
@@ -188,6 +188,7 @@ pages.forEach(function (page) {
   assert(/<input type="hidden" id="leadid_tcpa_disclosure" name="lead_consent\[tcpa_consent\]" value="Y" data-leadid-type="disclosure" \/>/.test(page), 'The Jornaya disclosure input must use the documented data-leadid-type attribute');
   assert(disclosureLabel, 'The complete TCPA disclosure must use a label explicitly associated with the Jornaya disclosure input');
   assert.strictEqual(disclosureLabel[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), disclosure, 'The Jornaya label must identify the complete approved disclosure');
+  assert(/<a [^>]*href="https:\/\/www\.ultimatemedical\.edu\/about\/privacy-policy\/"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>Privacy Policy<\/a>/.test(page), 'The Privacy Policy link must point to the approved support page and open safely');
   assert(!/tcpa-check|consent-error/.test(page), 'TCPA checkbox UI or error state remains');
   assert(/id="submitButton"[^>]*aria-describedby="tcpa-disclosure"/.test(page), 'Request Info must reference the disclosure');
   assert(/name="lead_consent\[tcpa_consent\]"[^>]*value="Y"/.test(page));
