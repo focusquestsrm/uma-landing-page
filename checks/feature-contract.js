@@ -48,18 +48,26 @@ assert.strictEqual(metaDocument.appended.filter(function (node) { return /fbeven
 assert(/result\.outcome === 'accepted'[\s\S]*UMA_META\.fireLead/.test(formSource));
 
 assert.strictEqual(graduationYears.MINIMUM_YEAR, 1996);
-assert.strictEqual(graduationYears.MAXIMUM_YEAR, 2023);
+assert.strictEqual(graduationYears.TRANSITION_MINIMUM_YEAR, 1998);
+assert.strictEqual(graduationYears.MAXIMUM_YEAR, 2025);
+assert.deepStrictEqual(graduationYears.getAllowedYears(new Date('2026-11-30T23:59:59-05:00')), [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003, 2002, 2001, 2000, 1999, 1998, 1997, 1996]);
+assert.deepStrictEqual(graduationYears.getAllowedYears(new Date('2026-12-01T00:00:00-05:00')), [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003, 2002, 2001, 2000, 1999, 1998]);
 [
-  ['1995', false],
-  ['1996', true],
-  ['2023', true],
-  ['2024', false],
-  ['', false],
-  ['2023.0', false],
-  ['2022.5', false],
-  ['not-a-year', false]
+  ['1995', false, new Date('2026-11-30T23:59:59-05:00')],
+  ['1996', true, new Date('2026-11-30T23:59:59-05:00')],
+  ['1997', true, new Date('2026-11-30T23:59:59-05:00')],
+  ['1998', true, new Date('2026-11-30T23:59:59-05:00')],
+  ['1997', false, new Date('2026-12-01T00:00:00-05:00')],
+  ['1998', true, new Date('2026-12-01T00:00:00-05:00')],
+  ['2025', true, new Date('2026-12-01T00:00:00-05:00')],
+  ['2026', false, new Date('2026-11-30T23:59:59-05:00')],
+  ['2026', false, new Date('2026-12-01T00:00:00-05:00')],
+  ['', false, new Date('2026-11-30T23:59:59-05:00')],
+  ['2023.0', false, new Date('2026-11-30T23:59:59-05:00')],
+  ['2022.5', false, new Date('2026-11-30T23:59:59-05:00')],
+  ['not-a-year', false, new Date('2026-11-30T23:59:59-05:00')]
 ].forEach(function (scenario) {
-  assert.strictEqual(graduationYears.isValid(scenario[0]), scenario[1], `Unexpected validation for ${scenario[0]}`);
+  assert.strictEqual(graduationYears.isValid(scenario[0], scenario[2]), scenario[1], `Unexpected validation for ${scenario[0]} at ${scenario[2].toISOString()}`);
 });
 assert(/if \(!validateStepTwo\(\)\)[\s\S]*updateStep\(2\)/.test(formSource), 'Final submit must revalidate graduation year');
 assert(/document\.activeElement === addressInput/.test(formSource), 'Address Enter must not submit the form before Google handles selection');
@@ -201,7 +209,7 @@ pages.forEach(function (page) {
   const graduationSelect = page.match(/<select id="lead_education_grad_year"[\s\S]*?<\/select>/);
   assert(graduationSelect, 'Graduation Year select is missing');
   const displayedYears = Array.from(graduationSelect[0].matchAll(/<option value="(\d{4})">/g), function (match) { return Number(match[1]); });
-  assert.deepStrictEqual(displayedYears, Array.from({ length: 28 }, function (_, index) { return 2023 - index; }));
+  assert.deepStrictEqual(displayedYears, Array.from({ length: 30 }, function (_, index) { return 2025 - index; }));
   assert(/name="subid2" id="subid2"/.test(page));
   assert(/name="subid3" id="subid3"/.test(page));
   assert(/name="subid4" id="subid4"/.test(page));

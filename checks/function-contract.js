@@ -265,15 +265,69 @@ function adminEvent(body, secret) {
   assert.strictEqual(protectedPayload.get('lead_education[grad_year]'), '2023');
   env(['LEADHOOP', 'FIXED', 'FIELDS'], '{}');
 
+  async function withMockDate(dateString, callback) {
+    const RealDate = global.Date;
+    class MockDate extends RealDate {
+      constructor(...args) {
+        if (args.length === 0) return new RealDate(dateString);
+        return new RealDate(...args);
+      }
+      static now() {
+        return new RealDate(dateString).getTime();
+      }
+    }
+    global.Date = MockDate;
+    try {
+      return await callback();
+    } finally {
+      global.Date = RealDate;
+    }
+  }
+
   global.fetch = vendorResult({ status: 'success' });
-  const minimumYear = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1996' }));
-  assert.strictEqual(minimumYear.statusCode, 200);
-  assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '1996');
+  const preTransitionMinimum = await withMockDate('2026-11-30T23:59:59-05:00', async function () {
+    const result = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1996' }));
+    assert.strictEqual(result.statusCode, 200);
+    assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '1996');
+    const outOfBand = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1997' }));
+    assert.strictEqual(outOfBand.statusCode, 200);
+    return result;
+  });
+  assert.strictEqual(preTransitionMinimum.statusCode, 200);
+
+  const transitionMinimum = await withMockDate('2026-12-01T00:00:00-05:00', async function () {
+    const accepted = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1998' }));
+    assert.strictEqual(accepted.statusCode, 200);
+    assert.strictEqual(new URL(vendorResult.lastUrl).searchParams.get('lead_education[grad_year]'), '1998');
+    const rejected = await submit(leadEvent('227753', { 'lead_education[grad_year]': '1997' }));
+    assert.strictEqual(rejected.statusCode, 400);
+    return accepted;
+  });
+  assert.strictEqual(transitionMinimum.statusCode, 200);
 
   let blockedVendorCalls = 0;
   global.fetch = async function () { blockedVendorCalls += 1; throw new Error('Invalid graduation year reached vendor'); };
-  for (const invalidYear of ['1995', '2024', '', '2023.0', '2022.5', 'not-a-year']) {
-    assert.strictEqual((await submit(leadEvent('227753', { 'lead_education[grad_year]': invalidYear }))).statusCode, 400);
+  const beforeTransitionInvalid = ['1995', '2026', '', '2023.0', '2022.5', 'not-a-year'];
+  for (const invalidYear of beforeTransitionInvalid) {
+    const result = await withMockDate('2026-11-30T23:59:59-05:00', async function () {
+      return submit(leadEvent('227753', { 'lead_education[grad_year]': invalidYear }));
+    });
+    assert.strictEqual(result.statusCode, 400, invalidYear);
+  }
+  const afterTransitionInvalid = ['1995', '1996', '1997', '2026', '', '2023.0', '2022.5', 'not-a-year'];
+  for (const invalidYear of afterTransitionInvalid) {
+    const result = await withMockDate('2026-12-01T00:00:00-05:00', async function () {
+      return submit(leadEvent('227753', { 'lead_education[grad_year]': invalidYear }));
+    });
+    assert.strictEqual(result.statusCode, 400, invalidYear);
+  }
+  global.fetch = vendorResult({ status: 'success' });
+  const transitionAccepted = ['1998', '2025', '2024'];
+  for (const validYear of transitionAccepted) {
+    const result = await withMockDate('2026-12-01T00:00:00-05:00', async function () {
+      return submit(leadEvent('227753', { 'lead_education[grad_year]': validYear }));
+    });
+    assert.strictEqual(result.statusCode, 200, validYear);
   }
   assert.strictEqual(blockedVendorCalls, 0, 'Invalid graduation year reached LeadHoop');
   assert.strictEqual((await submit(leadEvent('227753', { submission_id: 'invalid id' }))).statusCode, 400);

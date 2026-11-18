@@ -104,6 +104,8 @@
                       <label for="lead_education_grad_year" class="form-label">Highschool Graduation Year*</label>
                       <select id="lead_education_grad_year" name="lead_education[grad_year]" class="form-select" required>
                         <option selected disabled value="">Please Select</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
                         <option value="2021">2021</option>
@@ -443,6 +445,14 @@
     <script src="js/meta-pixel.js"></script>
     <script src="js/program-availability.js"></script>
     <script src="js/graduation-years.js"></script>
+    <script>
+      (function () {
+        var select = document.getElementById('lead_education_grad_year');
+        if (select && window.UMA_GRADUATION_YEARS && typeof window.UMA_GRADUATION_YEARS.applyOptions === 'function') {
+          window.UMA_GRADUATION_YEARS.applyOptions(select);
+        }
+      })();
+    </script>
     <script src="js/phone.js"></script>
     <script src="js/education-levels.js"></script>
     <script src="js/function2.js"></script>
